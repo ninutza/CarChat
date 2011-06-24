@@ -143,7 +143,7 @@ implementation {
   
 
   event message_t* ReceiveInfr.receive(message_t* msg, void* payload, uint8_t len) {
-    dataMsg* rxMsg = (dataMsg*)payload;
+    //dataMsg* rxMsg = (dataMsg*)payload;
  
     call Leds.led1Toggle();
 

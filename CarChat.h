@@ -7,7 +7,7 @@ enum {
   AM_INFRMSG = 168,
   PING_PER = 1000,
   INFR_TIMEOUT = 10, //time in seconds
-  DATASIZE = 64,
+  DATASIZE = 30,
   LIVEZ = 1,
   DEADZ_Q = 2,
   DEADZ_A = 3
