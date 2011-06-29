@@ -15,7 +15,11 @@ implementation {
   components new AMReceiverC(AM_INFRMSG) as AMReceiver2;
   components LedsC;
 
+  components CC2420ActiveMessageC as CC2420MsgC;
+
+#ifdef LOGGER_ON
   components new LogStorageC(VOLUME_LOGTEST, TRUE);
+#endif
   
   CarChatC -> MainC.Boot;
   CarChatC.Leds -> LedsC;
@@ -27,7 +31,12 @@ implementation {
   CarChatC.ReceiveInfr -> AMReceiver2;
   CarChatC.SendPingMsg -> AMSender1.AMSend;
 
+  CarChatC -> CC2420MsgC.CC2420Packet;
+
+
+#ifdef LOGGER_ON
   CarChatC.LogWrite -> LogStorageC;
   CarChatC.LogRead -> LogStorageC;
+#endif
 }
 

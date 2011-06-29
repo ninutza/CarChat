@@ -3,7 +3,6 @@
 #include "CarChat.h"
 #include "printf.h"
 
-// #define LOGGER_ON
 
 module CarChatC {
   uses {
@@ -21,26 +20,59 @@ module CarChatC {
     interface Timer<TMilli> as LiveZoneExitTimer;
     interface Leds;
 
+    // for RSSI read
+    interface CC2420Packet;
+
+#ifdef LOGGER_ON
     interface LogWrite;
     interface LogRead;    
+#endif
   }
 }
 
 implementation {
   message_t PingPkt;
-  nx_uint8_t number_pings;
+  nx_uint8_t no_ping;	// counts pings sent by this node
+  nx_uint8_t number_pings; // counts pings received in general
+#ifdef LOGGER_ON
   logLine log_line;
+  nx_uint8_t log_idx;
+#endif
   bool mote_busy;
   nx_uint8_t state; // state in protocol description - Live Zone, Dead Zone Quiescent, Dead Zone Active
+
+  void ChangeState(nx_uint8_t new_state)
+  {
+    if(new_state == LIVEZ)
+    {
+      // turn on RED LED to signify in live zone
+      // run one time shot for timeout
+      // set state to LIVEZ
+    }
+    else if(new_state == DEADZ_A)
+    {
+      // turn on BLUE LED to signify dead zone active
+      // if coming from adv, set random backoff timer for request
+      // else, send adv with metadata of state
+      // set state to DEADZ_A
+    }
+    else if(new_state == DEADZ_Q)
+    {
+      // turn off all LEDs
+      // set periodic PING timer
+      // reset PING recording fields
+      // set state to DEADZ_Q
+    }
+  }
 
   event void Boot.booted() {
 
     // upon booting, first start radio (in DeadZoneQuiescent mode)
 
     state = DEADZ_Q;
-
-    printf("Turned on, starting radio\n");
-    printfflush();
+    no_ping = 0;
+//    printf("Turned on, starting radio\n");
+//    printfflush();
 
 
     call AMControl.start();
@@ -51,9 +83,10 @@ implementation {
     if (err == SUCCESS) {	// radio successfully initiated
 
       #ifdef LOGGER_ON
-      printf("Radio on, starting to read log\n");
-      printfflush();
+//      printf("Radio on, starting to read log\n");
+//      printfflush();
 
+      log_idx = 0;
       mote_busy = TRUE;
 
       call Leds.led2On();
@@ -62,8 +95,8 @@ implementation {
 	// not critical, so no error handling
       }
       #else
-      printf("Radio on, skipping log\n");
-      printfflush();
+//      printf("Radio on, skipping log\n");
+//      printfflush();
 
       mote_busy = FALSE;
 
@@ -89,8 +122,11 @@ implementation {
     dbg("CarChat","Timer went off, sending PING message\n"); 
     call Leds.led0Toggle();
 
-    pChatMsg->vNum=0;  // ping message simply contains a ver. 0 advertisement
-    pChatMsg->sourceAddr=(uint16_t)TOS_NODE_ID;
+    pChatMsg->vNum = 0;  // ping message simply contains a ver. 0 advertisement
+    pChatMsg->sourceAddr = (uint16_t)TOS_NODE_ID;
+    pChatMsg->no_ping = no_ping;
+ 
+    no_ping++;
 
     // send Ping including source ID for car identification
     if(call SendPingMsg.send(AM_BROADCAST_ADDR,&PingPkt,sizeof(chatMsg))==FAIL){ }
@@ -121,12 +157,18 @@ implementation {
         number_pings = number_pings + 1;
   
         #ifdef LOGGER_ON
-        mote_busy = TRUE;
-        log_line.no_pings = number_pings;
-        log_line.sourceAddr = rxMsg->sourceAddr;
-        if (call LogWrite.append(&log_line, sizeof(logLine)) != SUCCESS) {
+        log_line.no_pings[log_idx] = rxMsg->no_ping;
+        log_line.sourceAddr[log_idx] = rxMsg->sourceAddr;
+        log_line.sig_val[log_idx] = (uint16_t) call CC2420Packet.getRssi(msg);
+	log_idx = log_idx + 1;
+
+        if(log_idx == 10 && mote_busy == FALSE) {
+          mote_busy = TRUE;
+          if (call LogWrite.append(&log_line, sizeof(logLine)) != SUCCESS) {
+          }
+          log_idx = 0;
+          mote_busy = FALSE;
         }
-        mote_busy = FALSE;
         #endif
 
       }
@@ -171,12 +213,17 @@ implementation {
      call Leds.led0Toggle();
   }
 
+
+#ifdef LOGGER_ON
   event void LogRead.readDone(void* buf, storage_len_t len, error_t err) {
 
     if ( (len == sizeof(logLine)) && (buf == &log_line) ) {
       // print out contents of log to screen 
-      printf("Logged %d pings, last one from %d\n", log_line.no_pings, log_line.sourceAddr);
-      printfflush();
+      nx_uint8_t idx;
+      for(idx = 0; idx < 10; idx = idx+1) {
+        printf("Logged ping #%d, from %d, with strength %d\n", log_line.no_pings[idx], log_line.sourceAddr[idx], log_line.sig_val[idx]);
+        printfflush();
+      }
 
       if (call LogRead.read(&log_line, sizeof(logLine)) != SUCCESS) { 
 	// not critical, so no error handling
@@ -211,6 +258,12 @@ implementation {
 
    event void LogWrite.appendDone(void* buf, storage_len_t len, 
                                  bool recordsLost, error_t err) {
+    if(err==SUCCESS) {
+      call LogWrite.sync();
+    }
+    else {
+      //?
+    }
   }
 
   event void LogRead.seekDone(error_t err) {
@@ -219,6 +272,6 @@ implementation {
   event void LogWrite.syncDone(error_t err) {
   }
 
-
+#endif
 
 }
