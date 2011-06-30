@@ -1,5 +1,7 @@
 #include "CarChat.h"
-#include "StorageVolumes.h"
+#ifdef LOGGER_ON
+  #include "StorageVolumes.h"
+#endif
 
 configuration CarChatAppC{ 
 }
@@ -15,7 +17,11 @@ implementation {
   components new AMReceiverC(AM_INFRMSG) as AMReceiver2;
   components LedsC;
 
+#ifdef SIM_MODE
+  components TossimActiveMessageC as TossimMsgC;
+#else
   components CC2420ActiveMessageC as CC2420MsgC;
+#endif
 
 #ifdef LOGGER_ON
   components new LogStorageC(VOLUME_LOGTEST, TRUE);
@@ -31,12 +37,15 @@ implementation {
   CarChatC.ReceiveInfr -> AMReceiver2;
   CarChatC.SendPingMsg -> AMSender1.AMSend;
 
+#ifdef SIM_MODE
+  CarChatC -> TossimMsgC.TossimPacket;
+#else
   CarChatC -> CC2420MsgC.CC2420Packet;
+#endif
 
 
 #ifdef LOGGER_ON
   CarChatC.LogWrite -> LogStorageC;
-  CarChatC.LogRead -> LogStorageC;
 #endif
 }
 

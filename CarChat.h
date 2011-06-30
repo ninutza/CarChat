@@ -3,6 +3,7 @@
 #define CARCHAT_H
 
 #define LOGGER_ON
+//#define SIM_MODE
 enum {
   AM_PINGMSG = 167,
   AM_INFRMSG = 168,

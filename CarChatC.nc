@@ -1,7 +1,7 @@
 
 #include <Timer.h> 
 #include "CarChat.h"
-#include "printf.h"
+// #include "printf.h"
 
 
 module CarChatC {
@@ -21,11 +21,14 @@ module CarChatC {
     interface Leds;
 
     // for RSSI read
+#ifdef SIM_MODE
+    interface TossimPacket;
+#else
     interface CC2420Packet;
+#endif
 
 #ifdef LOGGER_ON
     interface LogWrite;
-    interface LogRead;    
 #endif
   }
 }
@@ -34,6 +37,7 @@ implementation {
   message_t PingPkt;
   nx_uint8_t no_ping;	// counts pings sent by this node
   nx_uint8_t number_pings; // counts pings received in general
+  nx_int16_t rssi_value; // signal strength reading
 #ifdef LOGGER_ON
   logLine log_line;
   nx_uint8_t log_idx;
@@ -59,22 +63,22 @@ implementation {
     else if(new_state == DEADZ_Q)
     {
       // turn off all LEDs
+      call Leds.led0Off();
+      call Leds.led1Off();
+      call Leds.led2Off();
       // set periodic PING timer
+      call PingTimer.startPeriodic(PING_PER); 
       // reset PING recording fields
+      number_pings = 0;
       // set state to DEADZ_Q
+      state = DEADZ_Q;
     }
   }
 
   event void Boot.booted() {
-
-    // upon booting, first start radio (in DeadZoneQuiescent mode)
-
-    state = DEADZ_Q;
+    // global counter of pings transmitted (overflow not important, still helps with global ordering)
     no_ping = 0;
-//    printf("Turned on, starting radio\n");
-//    printfflush();
-
-
+    // upon booting, first start radio 
     call AMControl.start();
   }
 
@@ -83,28 +87,17 @@ implementation {
     if (err == SUCCESS) {	// radio successfully initiated
 
       #ifdef LOGGER_ON
-//      printf("Radio on, starting to read log\n");
-//      printfflush();
+        log_idx = 0;
+      #endif
 
-      log_idx = 0;
+      // initiate DeadZoneQuiescent mode
       mote_busy = TRUE;
-
-      call Leds.led2On();
-  
-      if (call LogRead.read(&log_line, sizeof(logLine)) != SUCCESS) { 
-	// not critical, so no error handling
+      atomic {
+        ChangeState(DEADZ_Q);
       }
-      #else
-//      printf("Radio on, skipping log\n");
-//      printfflush();
-
       mote_busy = FALSE;
 
-      number_pings = 0;
-      call PingTimer.startPeriodic(PING_PER); 
-
-      dbg("CarChat","Started ping timer in Dead Zone Quiescent Mode\n");
-      #endif
+      dbg("CarChat","Started mote in Dead Zone Quiescent Mode\n");
 
     }
     else {
@@ -113,13 +106,15 @@ implementation {
 
   }
 
-  event void AMControl.stopDone(error_t err) {}
+  event void AMControl.stopDone(error_t err) {
+  }
 
   event void PingTimer.fired()
   {
-    chatMsg *pChatMsg = (chatMsg*)(call Packet.getPayload(&PingPkt,(uint8_t)NULL));
+    chatMsg *pChatMsg = (chatMsg*)(call Packet.getPayload(&PingPkt,sizeof(chatMsg)));
 
     dbg("CarChat","Timer went off, sending PING message\n"); 
+    
     call Leds.led0Toggle();
 
     pChatMsg->vNum = 0;  // ping message simply contains a ver. 0 advertisement
@@ -137,29 +132,41 @@ implementation {
   {
     // when live zone times out, time to switch back to Dead Zone Quiescent state
     dbg("CarChat","Timed out on live zone, starting to send PING messages\n"); 
-    state = DEADZ_Q;
-    call PingTimer.startPeriodic(PING_PER);    
-    call Leds.led0Off();
+    ChangeState(DEADZ_Q);
   }
 
 
   event message_t* ReceivePing.receive(message_t* msg, void* payload, uint8_t len) {
-    chatMsg* rxMsg = (chatMsg*)payload;
+    // safer way to obtain message payload
+    chatMsg *rxMsg = (chatMsg*)(call Packet.getPayload(msg,sizeof(chatMsg)));
+
+    //chatMsg* rxMsg = (chatMsg*)payload;
     
-    if(state == DEADZ_Q) {
+    if(state == DEADZ_Q) {	// ignore pings received while in other states
 
       dbg("CarChat","Received ping message from %d - checking for version number\n", rxMsg->sourceAddr);
 
-      if(rxMsg->vNum == 0 && !mote_busy) {             // ping signal received, do nothing for now ** insert RSSI reading **
+      #ifdef SIM_MODE
+      rssi_value = (int16_t)(call TossimPacket.strength(msg));
+      #else
+      rssi_value = 43;
+      #endif
+
+      if(rxMsg->vNum == 0 && !mote_busy) {             // ping signal received, print RSSI reading and log (if logging is on)
         call Leds.led1Toggle();
-        dbg("CarChat","Message has version 0, counting PING\n");
+
+        #ifndef SIM_MODE
+        rssi_value = (uint16_t)(call CC2420Packet.getRssi(msg));
+	#endif
+
+        dbg("CarChat","Message has version 0, counting PING with RSSI %d\n", rssi_value);
    
         number_pings = number_pings + 1;
   
         #ifdef LOGGER_ON
         log_line.no_pings[log_idx] = rxMsg->no_ping;
         log_line.sourceAddr[log_idx] = rxMsg->sourceAddr;
-        log_line.sig_val[log_idx] = (uint16_t) call CC2420Packet.getRssi(msg);
+        log_line.sig_val[log_idx] = rssi_value;
 	log_idx = log_idx + 1;
 
         if(log_idx == 10 && mote_busy == FALSE) {
@@ -213,42 +220,7 @@ implementation {
      call Leds.led0Toggle();
   }
 
-
 #ifdef LOGGER_ON
-  event void LogRead.readDone(void* buf, storage_len_t len, error_t err) {
-
-    if ( (len == sizeof(logLine)) && (buf == &log_line) ) {
-      // print out contents of log to screen 
-      nx_uint8_t idx;
-      for(idx = 0; idx < 10; idx = idx+1) {
-        printf("Logged ping #%d, from %d, with strength %d\n", log_line.no_pings[idx], log_line.sourceAddr[idx], log_line.sig_val[idx]);
-        printfflush();
-      }
-
-      if (call LogRead.read(&log_line, sizeof(logLine)) != SUCCESS) { 
-	// not critical, so no error handling
-      }
-    }
-    else { // log was completely read
-      if (call LogWrite.erase() != SUCCESS) { 
-      // error handling, not critical 
-      }
-
-      printf("Log read done, starting Ping timer\n");
-      printfflush();
-
-      call Leds.led2Off();
-
-      mote_busy = FALSE;
-
-      number_pings = 0;
-      call PingTimer.startPeriodic(PING_PER); 
-
-      dbg("CarChat","Started ping timer in Dead Zone Quiescent Mode\n");
-
-    }
-
-  }
 
   event void LogWrite.eraseDone(error_t err) {
     // nothing needs to be done here
@@ -264,9 +236,6 @@ implementation {
     else {
       //?
     }
-  }
-
-  event void LogRead.seekDone(error_t err) {
   }
 
   event void LogWrite.syncDone(error_t err) {
