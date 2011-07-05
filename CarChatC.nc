@@ -10,10 +10,15 @@ module CarChatC {
     // interfaces for sending, receiving ping packets (receiver shared with other types of messages)
     interface AMSend as SendPingMsg;
     interface Receive as ReceivePing;
-    interface Packet;
+    interface Packet as Packet1;
 
     // interface for receiving infrastructure packets
     interface Receive as ReceiveInfr;
+
+    // interfaces for infrastructure mode
+    interface AMSend as SendInfrMsg;
+    interface Packet as Packet2;
+    interface Timer<TMilli> as InfrTimer;
 
     interface SplitControl as AMControl; 
     interface Timer<TMilli> as PingTimer;
@@ -34,6 +39,7 @@ module CarChatC {
 }
 
 implementation {
+  // variables used for vehicular nodes
   message_t PingPkt;
   nx_uint8_t no_ping;	// counts pings sent by this node
   nx_uint8_t number_pings; // counts pings received in general
@@ -43,6 +49,11 @@ implementation {
   nx_uint8_t log_idx;
 #endif
   bool mote_busy;
+  
+  // variables used for infrastructure nodes
+  message_t InfrPkt;
+  bool radio_busy;
+
   nx_uint8_t state; // state in protocol description - Live Zone, Dead Zone Quiescent, Dead Zone Active
 
   void ChangeState(nx_uint8_t new_state)
@@ -73,6 +84,11 @@ implementation {
       // set state to DEADZ_Q
       state = DEADZ_Q;
     }
+    else if(new_state == INFR_NODE)
+    {
+       call InfrTimer.startOneShot(INFRMSG_PER); 
+       dbg("InfrChat","Started infrastructure timer\n");
+    }
   }
 
   event void Boot.booted() {
@@ -86,19 +102,30 @@ implementation {
 
     if (err == SUCCESS) {	// radio successfully initiated
 
-      #ifdef LOGGER_ON
-        log_idx = 0;
-      #endif
+      if((uint16_t)TOS_NODE_ID < MAX_NODES) // this node is a vehicular node
+      {
 
-      // initiate DeadZoneQuiescent mode
-      mote_busy = TRUE;
-      atomic {
-        ChangeState(DEADZ_Q);
+        #ifdef LOGGER_ON
+          log_idx = 0;
+        #endif
+
+        // initiate DeadZoneQuiescent mode
+        mote_busy = TRUE;
+        atomic {
+          ChangeState(DEADZ_Q);
+        }
+        mote_busy = FALSE;
+
+        dbg("CarChat","Started mote in Dead Zone Quiescent Mode\n");
       }
-      mote_busy = FALSE;
+      else { // this node should operate as an infrastructure node
+        mote_busy = TRUE;
+        atomic {
+          ChangeState(INFR_NODE);
+        }
+        mote_busy = FALSE;
 
-      dbg("CarChat","Started mote in Dead Zone Quiescent Mode\n");
-
+      }
     }
     else {
       call AMControl.start();
@@ -111,7 +138,7 @@ implementation {
 
   event void PingTimer.fired()
   {
-    chatMsg *pChatMsg = (chatMsg*)(call Packet.getPayload(&PingPkt,sizeof(chatMsg)));
+    chatMsg *pChatMsg = (chatMsg*)(call Packet1.getPayload(&PingPkt,sizeof(chatMsg)));
 
     dbg("CarChat","Timer went off, sending PING message\n"); 
     
@@ -137,81 +164,81 @@ implementation {
 
 
   event message_t* ReceivePing.receive(message_t* msg, void* payload, uint8_t len) {
-    // safer way to obtain message payload
-    chatMsg *rxMsg = (chatMsg*)(call Packet.getPayload(msg,sizeof(chatMsg)));
 
-    //chatMsg* rxMsg = (chatMsg*)payload;
-    
-    if(state == DEADZ_Q) {	// ignore pings received while in other states
+    if( (uint16_t)TOS_NODE_ID < MAX_NODES ) {
 
-      dbg("CarChat","Received ping message from %d - checking for version number\n", rxMsg->sourceAddr);
+      // safer way to obtain message payload
+      chatMsg *rxMsg = (chatMsg*)(call Packet1.getPayload(msg,sizeof(chatMsg)));
 
-      #ifdef SIM_MODE
-      rssi_value = (int16_t)(call TossimPacket.strength(msg));
-      #else
-      rssi_value = 43;
-      #endif
 
-      if(rxMsg->vNum == 0 && !mote_busy) {             // ping signal received, print RSSI reading and log (if logging is on)
-        call Leds.led1Toggle();
+      if(state == DEADZ_Q) {	// ignore pings received while in other states
 
-        #ifndef SIM_MODE
+        dbg("CarChat","Received ping message from %d - checking for version number\n", rxMsg->sourceAddr);
+ 
+        #ifdef SIM_MODE
+        rssi_value = (int16_t)(call TossimPacket.strength(msg));
+        #else
         rssi_value = (uint16_t)(call CC2420Packet.getRssi(msg));
-	#endif
-
-        dbg("CarChat","Message has version 0, counting PING with RSSI %d\n", rssi_value);
-   
-        number_pings = number_pings + 1;
-  
-        #ifdef LOGGER_ON
-        log_line.no_pings[log_idx] = rxMsg->no_ping;
-        log_line.sourceAddr[log_idx] = rxMsg->sourceAddr;
-        log_line.sig_val[log_idx] = rssi_value;
-	log_idx = log_idx + 1;
-
-        if(log_idx == 10 && mote_busy == FALSE) {
-          mote_busy = TRUE;
-          if (call LogWrite.append(&log_line, sizeof(logLine)) != SUCCESS) {
-          }
-          log_idx = 0;
-          mote_busy = FALSE;
-        }
         #endif
 
-      }
-      else {
-        call Leds.led2Toggle();
-      }
-    }
-    else {
-      dbg("CarChat","Received ping while in %d state, ignoring\n",state);
-    }
+        if(rxMsg->vNum == 0 && !mote_busy) {             // ping signal received, print RSSI reading and log (if logging is on)
+          call Leds.led1Toggle();
 
+          dbg("CarChat","Message has version 0, counting PING with RSSI %d\n", rssi_value);
+   
+          number_pings = number_pings + 1;
+  
+          #ifdef LOGGER_ON
+          log_line.no_pings[log_idx] = rxMsg->no_ping;
+          log_line.sourceAddr[log_idx] = rxMsg->sourceAddr;
+          log_line.sig_val[log_idx] = rssi_value;
+	  log_idx = log_idx + 1;
+
+          if(log_idx == 10 && mote_busy == FALSE) {
+            mote_busy = TRUE;
+            if (call LogWrite.append(&log_line, sizeof(logLine)) != SUCCESS) {
+            }
+            log_idx = 0;
+            mote_busy = FALSE;
+          }
+          #endif
+
+        } // end if(rxMsg->vNum == 0 && !mote_busy)
+
+     } // end if(state == DEADZ_Q)
+     else {
+       dbg("CarChat","Received ping while in %d state, ignoring\n",state);
+     } // other states, vehicular node
+
+    } // end if( (uint16_t)TOS_NODE_ID < MAX_NODES ) 
     return msg;
   }
   
 
   event message_t* ReceiveInfr.receive(message_t* msg, void* payload, uint8_t len) {
-    //dataMsg* rxMsg = (dataMsg*)payload;
+    
+    if( (uint16_t)TOS_NODE_ID < MAX_NODES ) {  // only process infrastructure message if node is vehicular
  
-    call Leds.led1Toggle();
+      call Leds.led1Toggle();
 
-    dbg("CarChat","Received infrastructure message, immediately going to active zone mode\n");
-    if(state != LIVEZ) { // if entering live zone, light up red LED
-      if(state == DEADZ_Q) {
-        call PingTimer.stop();
+      dbg("CarChat","Received infrastructure message, immediately going to active zone mode\n");
+
+      if(state != LIVEZ) { // if entering live zone, light up red LED
+        if(state == DEADZ_Q) {
+          call PingTimer.stop();
+        }
+        state = LIVEZ;    
+        call Leds.led0On();
       }
-      state = LIVEZ;    
-      call Leds.led0On();
-    }
-    else {  // if already in live zone, reset timeout timer
-      call LiveZoneExitTimer.stop();
-    }
-    // process infrastructure data, save in appropriate place
+      else {  // if already in live zone, reset timeout timer
+        call LiveZoneExitTimer.stop();
+      }
+      // process infrastructure data, save in appropriate place
 
-    // start timeout timer, to check if still in live zone
-    call LiveZoneExitTimer.startOneShot(INFR_TIMEOUT*1024);
-
+      // start timeout timer, to check if still in live zone
+      call LiveZoneExitTimer.startOneShot(INFR_TIMEOUT*1024);
+    }
+ 
     return msg;
   }
 
@@ -242,5 +269,37 @@ implementation {
   }
 
 #endif
+
+// ********** CODE FOR MOTE ACTING AS INFRASTRUCTURE **************
+  event void InfrTimer.fired()
+  {
+    dataMsg *pInfrMsg = (dataMsg*)(call Packet2.getPayload(&InfrPkt,(uint8_t)NULL));
+
+    dbg("InfrChat","Timer went off, sending infrastructure message sequence\n"); 
+    call Leds.led2On();
+
+    // here, copy real data into infrastructure message content ***
+    pInfrMsg->vNum = 1;  
+    pInfrMsg->sourceAddr = 0;
+    pInfrMsg->dType = 2;
+    pInfrMsg->pNum = 1;
+
+    // send first data packet with source ID = 0 (infrastructure)
+    if(call SendInfrMsg.send(AM_BROADCAST_ADDR,&InfrPkt,sizeof(dataMsg))==FAIL){ 
+      dbg("InfrErr","Sending Failed\n");
+    }
+    else { 
+    }
+  }
+
+  event void SendInfrMsg.sendDone(message_t* msg, error_t error) {
+     // here, call send repeatedly until all data held by infrastructure node is transmitted
+
+     // when data transmission complete (last packet of last data item sent), restart timer
+     call Leds.led2Off();
+     dbg("InfrChat", "Sending complete, starting timer again\n");
+     call InfrTimer.startOneShot(INFRMSG_PER); 
+  }
+
 
 }

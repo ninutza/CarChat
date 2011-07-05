@@ -9,10 +9,13 @@ enum {
   AM_INFRMSG = 168,
   PING_PER = 1000,
   INFR_TIMEOUT = 10, //time in seconds
+  INFRMSG_PER = 1024, // time between transmissions, in ms
   DATASIZE = 30,
   LIVEZ = 1,
   DEADZ_Q = 2,
-  DEADZ_A = 3
+  DEADZ_A = 3,
+  INFR_NODE = 0xFF,
+  MAX_NODES = 100
 };
 
 // dissemination packet
