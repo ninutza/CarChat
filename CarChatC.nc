@@ -44,6 +44,8 @@ implementation {
   nx_uint8_t no_ping;	// counts pings sent by this node
   nx_uint8_t number_pings; // counts pings received in general
   nx_int16_t rssi_value; // signal strength reading
+
+  dataItem mem_data;	// as long as one single data type will be used for testing, with ID "TEST_ID"
 #ifdef LOGGER_ON
   logLine log_line;
   nx_uint8_t log_idx;
@@ -221,9 +223,10 @@ implementation {
  
       call Leds.led1Toggle();
 
-      dbg("CarChat","Received infrastructure message, immediately going to active zone mode\n");
+      dbg("CarChat","Received infrastructure message, ");
 
       if(state != LIVEZ) { // if entering live zone, light up red LED
+        dbg("CarChat","entering Live Zone state\n");
         if(state == DEADZ_Q) {
           call PingTimer.stop();
         }
@@ -231,6 +234,7 @@ implementation {
         call Leds.led0On();
       }
       else {  // if already in live zone, reset timeout timer
+        dbg("CarChat","though already in Live Zone state\n");
         call LiveZoneExitTimer.stop();
       }
       // process infrastructure data, save in appropriate place

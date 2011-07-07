@@ -2,6 +2,7 @@
 from TOSSIM import *
 import sys
 
+# allow for 3 vehicular nodes, and one infrastructure node (id =101)
 t = Tossim([])
 r = t.radio()
 f = open("topo.txt", "r")
@@ -14,6 +15,8 @@ for line in lines:
     r.add(int(s[0]), int(s[1]), float(s[2]))
 
 t.addChannel("CarChat", sys.stdout)
+t.addChannel("InfrChat", sys.stdout)
+t.addChannel("InfrErr", sys.stdout)
 # t.addChannel("Boot", sys.stdout)
 
 noise = open("meyer-heavy.txt", "r")
@@ -24,15 +27,19 @@ for line in lines:
     val = int(str1)
     for i in range(1, 4):
       t.getNode(i).addNoiseTraceReading(val)
+    t.getNode(101).addNoiseTraceReading(val)
+  
 
 for i in range(1, 4):
   print "Creating noise model for ",i;
   t.getNode(i).createNoiseModel()
+t.getNode(101).createNoiseModel()
 
+t.getNode(101).bootAtTime(99994);
 t.getNode(1).bootAtTime(100001);
-t.getNode(2).bootAtTime(800008);
-t.getNode(3).bootAtTime(1800009);
+t.getNode(2).bootAtTime(100008);
+t.getNode(3).bootAtTime(100009);
 
-for i in range(0, 100):
+for i in range(0, 200):
   t.runNextEvent()
 

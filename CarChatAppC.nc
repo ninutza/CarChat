@@ -24,8 +24,14 @@ implementation {
   components new TimerMilliC() as PingTimer;
   components new TimerMilliC() as LiveTimer;
   components new AMSenderC(AM_PINGMSG) as AMSender1;
+// components new AMSenderC(AM_ADVMSG) as AMSender3;
+// components new AMSenderC(AM_REQMSG) as AMSender4;
+// components new AMSenderC(AM_DATAMSG) as AMSender5;
   components new AMReceiverC(AM_PINGMSG) as AMReceiver1;
   components new AMReceiverC(AM_INFRMSG) as AMReceiver2;
+//  components new AMReceiverC(AM_ADVMSG) as AMReceiver3;
+//  components new AMReceiverC(AM_REQMSG) as AMReceiver4;
+//  components new AMReceiverC(AM_DATAMSG) as AMReceiver5;
 
 #ifdef SIM_MODE
   components TossimActiveMessageC as TossimMsgC;
