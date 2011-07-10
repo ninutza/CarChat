@@ -15,6 +15,8 @@ for line in lines:
     r.add(int(s[0]), int(s[1]), float(s[2]))
 
 t.addChannel("CarChat", sys.stdout)
+t.addChannel("CarErr",sys.stdout)
+t.addChannel("ActiveChat",sys.stdout)
 t.addChannel("InfrChat", sys.stdout)
 t.addChannel("InfrErr", sys.stdout)
 # t.addChannel("Boot", sys.stdout)
@@ -27,15 +29,15 @@ for line in lines:
     val = int(str1)
     for i in range(1, 3):
       t.getNode(i).addNoiseTraceReading(val)
-    t.getNode(101).addNoiseTraceReading(val)
+    #t.getNode(101).addNoiseTraceReading(val)
   
 
 for i in range(1, 3):
   print "Creating noise model for ",i;
   t.getNode(i).createNoiseModel()
-t.getNode(101).createNoiseModel()
+#t.getNode(101).createNoiseModel()
 
-t.getNode(101).bootAtTime(99994);
+#t.getNode(101).bootAtTime(99994);
 t.getNode(1).bootAtTime(100001);
 t.getNode(2).bootAtTime(100008);
 #t.getNode(3).bootAtTime(100009);

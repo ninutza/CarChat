@@ -4,20 +4,33 @@
 
 //#define LOGGER_ON
 #define SIM_MODE
+
+//#define PING_SUPPR	// suppress pinging for 10*ping interval if more than 10 pings are heard in any one interval 	
+
 enum {
   AM_PINGMSG = 167,	// AM type for ping(beacon) messages
   AM_INFRMSG = 168,     // AM type for infrastructure messages 
+  AM_ADVMSG = 169,      // AM type for advertisement messages 
+  AM_REQMSG = 170,      // AM type for request messages 
+  AM_DATAMSG = 171,     // AM type for data messages 
+
   PING_PER = 1000,      // ping interval in ms
   INFR_TIMEOUT = 10,    //time in seconds until live zone times out
+  CAR_TIMEOUT = 3,      // time in seconds until dead zone active times out
   INFRMSG_PER = 1024,   // time between transmissions, in ms (for infrastructure nodes)
+  BACKOFF_MAX = 500,    // time for random backoff in ms for sending advertisement
+
   DATASIZE = 30,        // amount of data transmitted per packet
+
   LIVEZ = 1,		// state encoding
   DEADZ_Q = 2,
   DEADZ_A = 3,
   INFR_NODE = 0xFF,	// special state for nodes operating in infrastructure mode
+
   MAX_NODES = 100,	// this is how many nodes can operate in vehicular mode, anything with higher ID will be infrastructure
   TEST_ID = 94,          // in simple tests, only 1 data item will circulate from infrastructure
   MAX_DATA = 1,
+  MAX_PING = 5,
   LOG_MAX = 10
 };
 
@@ -39,8 +52,27 @@ typedef nx_struct reqMsg {
   nx_uint8_t vNum;
   nx_uint16_t sourceAddr;
   nx_uint16_t destAddr;
-  nx_uint8_t pNum; // packet number will be 0 if complete data is requested. else, numnber of first missing packet is transmitted
+  nx_uint8_t pNum; // packet number will be 0 if complete data is requested. else, number of first missing packet is transmitted
 } reqMsg;
+
+// advertisement message packet
+typedef nx_struct advMsg {
+  nx_uint8_t dataID; // this will be an array if multiple data versions are stored (it may advertise partial versions too)
+  nx_uint8_t dType;
+  nx_uint8_t vNum;
+  nx_uint16_t sourceAddr;
+  nx_uint16_t destAddr;
+} advMsg;
+
+// PING packet
+typedef nx_struct chatMsg {
+  nx_uint8_t vNum; //version number
+  nx_uint16_t sourceAddr;
+  nx_uint16_t no_ping;
+} chatMsg;
+
+
+// ********** data structures for memory storage **********
 
 // to save memory on TelosB motes, we won't actually save data received; instead, we will send default value of data[DATASIZE] array
 // and only save the version number (vNum) and received packet numbers (pNum) at the receiver - same structure as request packets
@@ -57,19 +89,27 @@ typedef nx_struct infrItem {
   reqMsg complData;
 } infrItem;
 
-// PING packet
-typedef nx_struct chatMsg {
-  nx_uint8_t vNum; //version number
-  nx_uint16_t sourceAddr;
-  nx_uint16_t no_ping;
-} chatMsg;
+// maintain infromation on current communication partner in Dead Zone Active state
+typedef nx_struct actComm {
+  nx_uint16_t NodeID; // 0 for no current communication in progress (reset when going to DEADZ_Q)
+  nx_uint8_t sentAdv; // 0 for not yet, 1 for yes
+  advMsg rcvAdv; // store advertisement received to determine what packet we need next
+} actComm;
+
+typedef nx_struct pingRcv {
+  nx_uint16_t NodeID;
+  nx_int16_t firstPing;
+  nx_int16_t lastPing;
+} pingRcv;
+
+// ********** data structures for Logging node activities **********
 
 // log data set - every 10 messages record what was received
 typedef nx_struct logLine {
     nx_uint8_t sourceType;     // 0 = infr, 1 = ping, 2 = adv, 3 = req, 4 = data
     nx_uint8_t no_pings;       // order number (local to the sending node)
     nx_uint16_t sourceAddr;
-    nx_uint16_t sig_val;    // this will contain a concatenated value of data type and data ID if not ping msg
+    nx_int16_t sig_val;    // this will contain a concatenated value of data type and data ID if not ping msg
     nx_uint8_t vNum;
     nx_uint8_t pNum;
   } logLine;
@@ -78,7 +118,7 @@ typedef nx_struct logInput {
     nx_uint8_t sourceType[LOG_MAX];
     nx_uint8_t no_pings[LOG_MAX];	// order number (local to the sending node)
     nx_uint16_t sourceAddr[LOG_MAX];
-    nx_uint16_t sig_val[LOG_MAX];    // this will contain a concatenated value of data type and data ID if not ping msg
+    nx_int16_t sig_val[LOG_MAX];    // this will contain a concatenated value of data type and data ID if not ping msg
     nx_uint8_t vNum[LOG_MAX];
     nx_uint8_t pNum[LOG_MAX];
   } logInput;

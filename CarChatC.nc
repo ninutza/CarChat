@@ -7,13 +7,28 @@
 module CarChatC {
   uses {
     interface Boot;
-    // interfaces for sending, receiving ping packets (receiver shared with other types of messages)
+    // interfaces for sending, receiving ping packets 
     interface AMSend as SendPingMsg;
     interface Receive as ReceivePing;
     interface Packet as Packet1;
 
     // interface for receiving infrastructure packets
     interface Receive as ReceiveInfr;
+
+    // interface for sending, receiving advertisement messages
+    interface AMSend as SendAdvMsg;
+    interface Receive as ReceiveAdv;
+    interface Packet as Packet3;
+
+    // interface for sending, receiving request messages
+    interface AMSend as SendReqMsg;
+    interface Receive as ReceiveReq;
+    interface Packet as Packet4;
+
+    // interface for sending, receiving data messages
+    interface AMSend as SendDataMsg;
+    interface Receive as ReceiveData;
+    interface Packet as Packet5;
 
     // interfaces for infrastructure mode
     interface AMSend as SendInfrMsg;
@@ -24,6 +39,15 @@ module CarChatC {
     interface Timer<TMilli> as PingTimer;
     interface Timer<TMilli> as LiveZoneExitTimer;
     interface Leds;
+
+    interface Timer<TMilli> as PingRecTimer; // timer for recording Pings in DEADZ_Q before initiating contact
+    interface Timer<TMilli> as AdvBackoffTimer; // timer for random backoff for sending timer (to avoid collisions)
+    interface Timer<TMilli> as CommTOTimer; // timer to end communication in DEADZ_A if it times out
+
+    // for ping suppression in case of congestion
+#ifdef PING_SUPPR
+    interface Timer<TMilli> as PingSupprTimer;
+#endif
 
     // for RSSI read
 #ifdef SIM_MODE
@@ -39,6 +63,9 @@ module CarChatC {
 }
 
 implementation {
+
+// ********** VARIABLES DECLARATION **********
+
   // variables used for vehicular nodes
   message_t PingPkt;
   nx_uint8_t no_ping;	// counts pings sent by this node
@@ -48,6 +75,10 @@ implementation {
   dataItem mem_data;	// as long as one single data type will be used for testing, with ID "TEST_ID"
 
   infrItem infr_data;
+
+  actComm curr_comm; // data on communication in progress
+  pingRcv ping_track[MAX_PING]; // data on most recent pings, to evaluate best comm partner 
+  nx_uint16_t new_chat;
 
 #ifdef LOGGER_ON
   logInput log_buf;	// save aggregate log data, which will all be written at once
@@ -61,6 +92,14 @@ implementation {
   bool radio_busy;
 
   nx_uint8_t state; // state in protocol description - Live Zone, Dead Zone Quiescent, Dead Zone Active
+
+  // auxiliary variables - counters, temps
+  nx_uint8_t i;
+  nx_uint8_t max_i;
+  nx_int16_t max_diff;
+
+
+// ********** FUNCTIONS USED BY CARCHAT **********
 
   // update state of node
   void ChangeState(nx_uint8_t new_state)
@@ -91,6 +130,14 @@ implementation {
     }
     else if(new_state == DEADZ_A)
     {
+      call Leds.led0Off();
+      call Leds.led1Off();
+      call Leds.led2Off();
+
+      dbg("ActiveChat","Entering dead zone active, engaging with node\n");
+
+      call PingTimer.stop();
+      
       // turn on BLUE LED to signify dead zone active
       // if coming from adv, set random backoff timer for request
       // else, send adv with metadata of state
@@ -98,8 +145,18 @@ implementation {
     }
     else if(new_state == DEADZ_Q)
     {
-      // clear out all data about previous pings
+      // clear out all data about previous communications
+      curr_comm.NodeID = 0;
+      curr_comm.sentAdv = 0;
+      curr_comm.rcvAdv.dataID = 0; // other fields of rcv Adv are irrelevant once dataID is NULL
 
+      // clear out all data about previous pings
+      for( i = 0; i < MAX_PING; i++) {
+        ping_track[i].NodeID = 0;
+        ping_track[i].firstPing = 0;
+        ping_track[i].lastPing = 0;
+      }
+  
       // reset PING recording fields
       number_pings = 0;
 
@@ -129,6 +186,7 @@ implementation {
   }
 
 #ifdef LOGGER_ON
+  // add log entry to log buffer
   void AddToLog(logLine newEntry) {
     // update all entries in log array
     log_buf.no_pings[log_idx] = newEntry.no_pings;
@@ -186,6 +244,60 @@ implementation {
     }
   }
 
+  void addPing(nx_uint16_t node_id, nx_int16_t sig_value) {
+    for( i = 0; i < MAX_PING; i++) {
+
+      if (ping_track[i].NodeID == node_id) {
+        ping_track[i].lastPing = sig_value;
+        dbg("CarChat","Ping from %d recorded, with value %d\n", node_id, sig_value);
+        break;
+      }
+
+      if (ping_track[i].NodeID == 0) { // made it past the recorded neighbors, didn't find this one
+        ping_track[i].NodeID = node_id;
+        ping_track[i].firstPing = sig_value;
+        ping_track[i].lastPing = sig_value;
+        dbg("CarChat","First ping from %d recorded, with value %d\n", node_id, sig_value);
+        break;
+      }
+    }
+ 
+    if ( i >= MAX_PING ) { // all positions were full, current PING did not belong
+      dbg("CarErr","Ping from %d superfluous, discarding\n", node_id);
+    }
+    
+  }
+
+
+  void selPing() { // once we're done recording pings, decide which one amongs them is best to communicate with
+
+    new_chat = 0;
+    max_i = MAX_PING + 1;
+    max_diff = -1;
+
+    for( i = 0; i < MAX_PING; i++) {
+      if(ping_track[i].NodeID == 0) { // reached the end of recorded pings
+        dbg("CarErr","Less than %d neighbors\n", i+1);
+        break;
+      }
+
+      dbg("CarChat","For neighbor %d, difference is %d \n", i+1, abs(ping_track[i].firstPing - ping_track[i].lastPing));
+
+      if(abs(ping_track[i].firstPing - ping_track[i].lastPing) > max_diff) { // found two pings with a larger difference (~higher rel speed)
+        max_i = i;
+        max_diff = abs(ping_track[i].firstPing - ping_track[i].lastPing);
+        dbg("CarChat","Node %d fastest one so far\n",ping_track[i].NodeID);
+      }     
+ 
+    }
+    
+    if(max_i <= MAX_PING) { // found a candidate
+      new_chat = ping_track[max_i].NodeID;
+      dbg("CarChat","Set new chat buddy to %d\n", new_chat);
+    }  
+  }
+// ********** EVENT BEHAVIOR - GENERAL **********
+
   event void Boot.booted() {
     // global counter of pings transmitted (overflow not important, still helps with global ordering)
     no_ping = 0;
@@ -231,9 +343,48 @@ implementation {
   event void AMControl.stopDone(error_t err) {
   }
 
+// ********** EVENT BEHAVIOR - Dead Zone Quiescent **********
+
+event void AdvBackoffTimer.fired() {
+    // reandom backoff timer for sending advertisement went off, check if communication is already taking place, else send adv
+  }
+
+event void PingRecTimer.fired() {
+    // done keeping record of pings, evaluate what's in the records and decide who to contact
+    dbg("CarChat","DONE keeping track of Pings !!!!!\n");
+
+    call PingTimer.stop();
+
+    selPing();
+
+    if(new_chat > 0) {
+      dbg("CarChat","   ***** Initiating conversation with %d *****\n", new_chat);
+    }
+    else {
+      dbg("CarChat","   ***** No one to talk to :( \n");
+    }
+    
+  }
+
+#ifdef PING_SUPPR
+  event void PingSupprTimer.fired()
+  {
+    if(number_pings >= 10) { // then still too congested, continue to be quiet
+      call PingSupprTimer.startOneShot(PING_PER);
+    }
+    else { // network has cleared up some, restart PING timer
+      call PingTimer.startPeriodic(PING_PER);
+    }
+
+    number_pings = 0;
+  }
+#endif
+
   event void PingTimer.fired()
   {
     chatMsg *pChatMsg = (chatMsg*)(call Packet1.getPayload(&PingPkt,sizeof(chatMsg)));
+
+    number_pings = 0;
 
     dbg("CarChat","Timer went off, sending PING message %d\n", no_ping); 
     
@@ -242,21 +393,15 @@ implementation {
     pChatMsg->vNum = 0;  // ping message simply contains a ver. 0 advertisement
     pChatMsg->sourceAddr = (uint16_t)TOS_NODE_ID;
     pChatMsg->no_ping = no_ping;
- 
-    no_ping++;
 
     // send Ping including source ID for car identification
-    if(call SendPingMsg.send(AM_BROADCAST_ADDR,&PingPkt,sizeof(chatMsg))==FAIL){ }
-    else { }
+    if(call SendPingMsg.send(AM_BROADCAST_ADDR,&PingPkt,sizeof(chatMsg))==FAIL){ 
+      dbg("CarErr","Failed sending ping message %d\n", no_ping-1);
+    }
+    else { 
+      no_ping++;
+    }
   }
-
-  event void LiveZoneExitTimer.fired()
-  {
-    // when live zone times out, time to switch back to Dead Zone Quiescent state
-    dbg("CarChat","Timed out on live zone, starting to send PING messages\n"); 
-    ChangeState(DEADZ_Q);
-  }
-
 
   event message_t* ReceivePing.receive(message_t* msg, void* payload, uint8_t len) {
 
@@ -279,9 +424,11 @@ implementation {
           call Leds.led1Toggle();
 
           dbg("CarChat","Message has version 0, counting PING with RSSI %d\n", rssi_value);
-   
-          // here, record new ping, and start recording timer if appropriate (new function?)
-          number_pings = number_pings + 1;
+
+          if( !(call PingRecTimer.isRunning())) {  // if this is the first ping since entering DEADZ_Q
+            call PingRecTimer.startOneShot(2*PING_PER+1);
+            dbg("CarChat","Started recording pings\n");
+          }
   
           #ifdef LOGGER_ON
           
@@ -296,6 +443,23 @@ implementation {
 
           #endif
 
+          // here, record new ping, and start recording timer if appropriate (new function?)
+          number_pings = number_pings + 1;
+
+          #ifdef PING_SUPPR
+        
+          if(number_pings >= 10 && !(call PingSupprTimer.isRunning()))  // if received too many pings and haven't suppressed yet
+          {
+            dbg("CarErr"," ***** Too many PINGS, starting quiet period for congestion control *****\n");
+            call PingTimer.stop();
+            call PingSupprTimer.startOneShot(PING_PER);
+          }
+
+          #endif
+
+          addPing(rxMsg->sourceAddr, rssi_value);
+
+
         } // end if(rxMsg->vNum == 0 && !mote_busy)
 
      } // end if(state == DEADZ_Q)
@@ -306,8 +470,24 @@ implementation {
     } // end if( (uint16_t)TOS_NODE_ID < MAX_NODES ) 
     return msg;
   }
-  
 
+  event void SendPingMsg.sendDone(message_t* msg, error_t error) {
+     call Leds.led0Toggle();
+  }
+
+  
+// ********** EVENT BEHAVIOR - Live Zone **********
+
+  // timeout from Live Zone
+  event void LiveZoneExitTimer.fired() {
+
+    // when live zone times out, time to switch back to Dead Zone Quiescent state
+    dbg("CarChat","Timed out on live zone, starting to send PING messages\n"); 
+    ChangeState(DEADZ_Q);
+
+  }
+
+  // received infrastructure message
   event message_t* ReceiveInfr.receive(message_t* msg, void* payload, uint8_t len) {
     
     if( (uint16_t)TOS_NODE_ID < MAX_NODES ) {  // only process infrastructure message if node is vehicular
@@ -343,10 +523,49 @@ implementation {
     return msg;
   }
 
-  
-  event void SendPingMsg.sendDone(message_t* msg, error_t error) {
-     call Leds.led0Toggle();
+// ********** EVENT BEHAVIOR - Dead Zone Active **********
+
+  event void CommTOTimer.fired() {
+    // Dead Zone Active communication timed out, just go back to Dead Zone Quiescent mode
   }
+
+  event message_t* ReceiveAdv.receive(message_t* msg, void* payload, uint8_t len) {
+    // if in LIVE ZONE, ignore
+    // if not for me, ignore
+    // if in DEADZ_Q, take this guy as comm partner
+	    //determine what, if anything I need, and send req for first of packets
+
+    // if in DEADZ_A with another (more useful), ignore
+	    //determine what, if anything I need, and send req for first of packets
+
+    return msg;
+  }
+
+  event void SendAdvMsg.sendDone(message_t* msg, error_t error) {
+  }
+
+  event message_t* ReceiveReq.receive(message_t* msg, void* payload, uint8_t len) {
+    // if in LIVE ZONE, ignore
+    // if not for me, ignore
+    // if in DEADZ_A with another, ignore
+    	// immediately send data as requested
+
+    return msg;
+  }
+
+  event void SendReqMsg.sendDone(message_t* msg, error_t error) {
+  }
+
+  event message_t* ReceiveData.receive(message_t* msg, void* payload, uint8_t len) {
+    // if data is relevant, save, else drop packet
+    return msg;
+  }
+
+  event void SendDataMsg.sendDone(message_t* msg, error_t error) {
+  }
+
+
+// ********** EVENT BEHAVIOR - Logging **********  
 
 #ifdef LOGGER_ON
 
@@ -370,6 +589,7 @@ implementation {
   }
 
 #endif
+
 
 // ********** CODE FOR MOTE ACTING AS INFRASTRUCTURE **************
   event void InfrTimer.fired()
