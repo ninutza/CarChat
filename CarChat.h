@@ -17,7 +17,8 @@ enum {
   INFR_NODE = 0xFF,	// special state for nodes operating in infrastructure mode
   MAX_NODES = 100,	// this is how many nodes can operate in vehicular mode, anything with higher ID will be infrastructure
   TEST_ID = 94,          // in simple tests, only 1 data item will circulate from infrastructure
-  MAX_DATA = 1
+  MAX_DATA = 1,
+  LOG_MAX = 10
 };
 
 // dissemination packet
@@ -27,12 +28,14 @@ typedef nx_struct dataMsg {
   nx_uint16_t sourceAddr; // always 0 for infrastructure nodes
   nx_uint8_t dType; //data type (i.e. 1 = weather, 2 = traffic, 3 = worksites)
   nx_uint8_t pNum; //packet number
+  nx_uint8_t tPack; // total number of packets
   nx_uint8_t data[DATASIZE]; // data contents
 } dataMsg;
 
 // request packet
 typedef nx_struct reqMsg {
   nx_uint8_t dataID;
+  nx_uint8_t dType;
   nx_uint8_t vNum;
   nx_uint16_t sourceAddr;
   nx_uint16_t destAddr;
@@ -49,6 +52,10 @@ typedef nx_struct dataItem {
   reqMsg incomData;	// this stores the incomplete version of data
 } dataItem;
 
+typedef nx_struct infrItem {
+  nx_uint8_t totalPack;
+  reqMsg complData;
+} infrItem;
 
 // PING packet
 typedef nx_struct chatMsg {
@@ -59,11 +66,22 @@ typedef nx_struct chatMsg {
 
 // log data set - every 10 messages record what was received
 typedef nx_struct logLine {
-    nx_uint8_t no_pings[10];	// order number (local to the sending node)
-    nx_uint16_t sourceAddr[10];
-    nx_uint16_t sig_val[10];    // this will contain a concatenated value of data type and data ID if not ping msg
-    nx_uint8_t vNum[10];
-    nx_uint8_t pNum[10];
+    nx_uint8_t sourceType;     // 0 = infr, 1 = ping, 2 = adv, 3 = req, 4 = data
+    nx_uint8_t no_pings;       // order number (local to the sending node)
+    nx_uint16_t sourceAddr;
+    nx_uint16_t sig_val;    // this will contain a concatenated value of data type and data ID if not ping msg
+    nx_uint8_t vNum;
+    nx_uint8_t pNum;
   } logLine;
+
+typedef nx_struct logInput {
+    nx_uint8_t sourceType[LOG_MAX];
+    nx_uint8_t no_pings[LOG_MAX];	// order number (local to the sending node)
+    nx_uint16_t sourceAddr[LOG_MAX];
+    nx_uint16_t sig_val[LOG_MAX];    // this will contain a concatenated value of data type and data ID if not ping msg
+    nx_uint8_t vNum[LOG_MAX];
+    nx_uint8_t pNum[LOG_MAX];
+  } logInput;
+
 
 #endif
