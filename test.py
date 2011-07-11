@@ -20,6 +20,7 @@ t.addChannel("ActiveChat",sys.stdout)
 t.addChannel("InfrChat", sys.stdout)
 t.addChannel("InfrErr", sys.stdout)
 # t.addChannel("Boot", sys.stdout)
+# t.addChannel("CarMisc",sys.stdout) # debugging statements for intermediary steps
 
 noise = open("meyer-heavy.txt", "r")
 lines = noise.readlines()
@@ -39,10 +40,10 @@ for i in range(1, 3):
 
 #t.getNode(101).bootAtTime(99994);
 t.getNode(1).bootAtTime(100001);
-t.getNode(2).bootAtTime(100008);
+t.getNode(2).bootAtTime(100125);
 #t.getNode(3).bootAtTime(100009);
 
-for i in range(0, 800):
+for i in range(0, 300):
   t.runNextEvent()
   #print "Time is ", t.time()
 

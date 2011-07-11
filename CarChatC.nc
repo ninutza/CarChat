@@ -44,6 +44,8 @@ module CarChatC {
     interface Timer<TMilli> as AdvBackoffTimer; // timer for random backoff for sending timer (to avoid collisions)
     interface Timer<TMilli> as CommTOTimer; // timer to end communication in DEADZ_A if it times out
 
+    interface Timer<TMilli> as DataBackOffTimer;
+
     // for ping suppression in case of congestion
 #ifdef PING_SUPPR
     interface Timer<TMilli> as PingSupprTimer;
@@ -59,6 +61,8 @@ module CarChatC {
 #ifdef LOGGER_ON
     interface LogWrite;
 #endif
+
+    interface Random;
   }
 }
 
@@ -68,6 +72,10 @@ implementation {
 
   // variables used for vehicular nodes
   message_t PingPkt;
+  message_t DataPack;
+  message_t ReqPkt;
+  message_t AdvPkt;
+
   nx_uint8_t no_ping;	// counts pings sent by this node
   nx_uint8_t number_pings; // counts pings received in general
   nx_int16_t rssi_value; // signal strength reading
@@ -94,16 +102,76 @@ implementation {
   nx_uint8_t state; // state in protocol description - Live Zone, Dead Zone Quiescent, Dead Zone Active
 
   // auxiliary variables - counters, temps
-  nx_uint8_t i;
-  nx_uint8_t max_i;
-  nx_int16_t max_diff;
 
 
 // ********** FUNCTIONS USED BY CARCHAT **********
 
+  void ChangeState(nx_uint8_t new_state);
+
+  void findNextReq() {
+    uint8_t end_comm = 0;
+    uint8_t vNum_req, pNum_req; 
+
+    reqMsg *pReqMsg;
+
+    // check curr_comm, and mem_data to figure out what is next packet needed
+    // if no packets are needed, send void request
+    if(curr_comm.rcvAdv.dataID == 0) {
+      dbg("CarErr"," !!!! Received ad for no data, send adv back / void request !!!!\n");
+      end_comm = 1;
+    }
+    else if(curr_comm.rcvAdv.dataID != mem_data.incomData.dataID || curr_comm.rcvAdv.dType != mem_data.incomData.dType) { 
+      dbg("CarErr"," !!! Received ad for UNKNOWN data, send adv back / void request !!! \n");
+      end_comm = 1;
+    }
+    else {
+      if(curr_comm.rcvAdv.vNum > mem_data.incomData.vNum) { // more updated version of complete data is now available
+        vNum_req = curr_comm.rcvAdv.vNum;
+        pNum_req = 0;
+      }  
+      else if((curr_comm.rcvAdv.vNum == mem_data.incomData.vNum) && (mem_data.incomData.vNum > mem_data.complData.vNum)) { // incomplete ver needs update
+        vNum_req = curr_comm.rcvAdv.vNum;
+        pNum_req = mem_data.incomData.pNum;
+      }
+      else {
+        end_comm = 1;
+      }
+    }
+
+    if(end_comm == 1) { // if nothing more is to be requested, send NULL request
+      pReqMsg = (reqMsg*)(call Packet4.getPayload(&ReqPkt,sizeof(reqMsg)));
+ 
+      pReqMsg->dataID = 0;
+      pReqMsg->destAddr = curr_comm.NodeID;
+      pReqMsg->sourceAddr = TOS_NODE_ID;
+ 
+      dbg("CarChat","Sending NULL request ......\n");
+
+      call SendReqMsg.send(AM_BROADCAST_ADDR,&ReqPkt,sizeof(reqMsg));
+    }
+    else { // since there is something to request, initialize request now
+      
+        pReqMsg = (reqMsg*)(call Packet4.getPayload(&ReqPkt,sizeof(reqMsg)));
+ 
+        pReqMsg->dataID = mem_data.incomData.dataID;
+        pReqMsg->dType = mem_data.incomData.dType;
+        pReqMsg->destAddr = curr_comm.NodeID;
+        pReqMsg->sourceAddr = TOS_NODE_ID;
+        pReqMsg->vNum = vNum_req;
+        pReqMsg->pNum = pNum_req;
+ 
+        call SendReqMsg.send(AM_BROADCAST_ADDR,&ReqPkt,sizeof(reqMsg));
+
+      call CommTOTimer.startOneShot(3*PING_PER);
+    }
+
+  }
+
   // update state of node
   void ChangeState(nx_uint8_t new_state)
   {
+    nx_uint8_t i;
+
     if(new_state == LIVEZ)
     {
       // toggle green LED to indicate message received from Infrastructure
@@ -113,7 +181,11 @@ implementation {
         dbg("CarChat"," ... entering Live Zone state\n");
         if(state == DEADZ_Q) {
           call PingTimer.stop();
+          call PingRecTimer.stop();
+          call AdvBackoffTimer.stop();
           // stop PingEval timer as well (in case car was in the process of detecting new cars)
+        } else if(state == DEADZ_A) {
+          call CommTOTimer.stop();
         }
         // set state to LIVEZ
         state = LIVEZ;    
@@ -134,21 +206,36 @@ implementation {
       call Leds.led1Off();
       call Leds.led2Off();
 
-      dbg("ActiveChat","Entering dead zone active, engaging with node\n");
+      dbg("ActiveChat","Entered dead zone active, engaging with node %d\n", curr_comm.NodeID);
 
       call PingTimer.stop();
-      
+      call PingRecTimer.stop();
+      call AdvBackoffTimer.stop();
+
       // turn on BLUE LED to signify dead zone active
-      // if coming from adv, set random backoff timer for request
-      // else, send adv with metadata of state
-      // set state to DEADZ_A
+      call Leds.led2On();
+
+      // if transition happened after sending an advertisement, wait for request
+      if(curr_comm.sentAdv == 1){
+        call CommTOTimer.startOneShot(3*PING_PER);
+      }
+      // else, send request based on data
+      else { 
+        findNextReq();
+      }
+
+      state = DEADZ_A;
     }
     else if(new_state == DEADZ_Q)
     {
+      call CommTOTimer.stop();
+    
       // clear out all data about previous communications
       curr_comm.NodeID = 0;
       curr_comm.sentAdv = 0;
       curr_comm.rcvAdv.dataID = 0; // other fields of rcv Adv are irrelevant once dataID is NULL
+      curr_comm.amInit = 0;
+      curr_comm.rcvReq = 0;
 
       // clear out all data about previous pings
       for( i = 0; i < MAX_PING; i++) {
@@ -239,17 +326,19 @@ implementation {
         mem_data.complData.vNum = mem_data.incomData.vNum;
       }
 
-      dbg("CarChat","Most recent data status is version %d in complete and version %d, packet %d in incomplete\n", 
+      dbg("CarChat"," --- Most recent data status is version %d in complete and version %d, packet %d in incomplete\n ---", 
           mem_data.complData.vNum, mem_data.incomData.vNum, mem_data.incomData.pNum);
     }
   }
 
   void addPing(nx_uint16_t node_id, nx_int16_t sig_value) {
+    nx_uint8_t i;
+
     for( i = 0; i < MAX_PING; i++) {
 
       if (ping_track[i].NodeID == node_id) {
         ping_track[i].lastPing = sig_value;
-        dbg("CarChat","Ping from %d recorded, with value %d\n", node_id, sig_value);
+        dbg("CarMisc","Ping from %d recorded, with value %d\n", node_id, sig_value);
         break;
       }
 
@@ -257,7 +346,7 @@ implementation {
         ping_track[i].NodeID = node_id;
         ping_track[i].firstPing = sig_value;
         ping_track[i].lastPing = sig_value;
-        dbg("CarChat","First ping from %d recorded, with value %d\n", node_id, sig_value);
+        dbg("CarMisc","First ping from %d recorded, with value %d\n", node_id, sig_value);
         break;
       }
     }
@@ -271,36 +360,47 @@ implementation {
 
   void selPing() { // once we're done recording pings, decide which one amongs them is best to communicate with
 
+    nx_uint8_t i;
+    nx_uint8_t max_i;
+    nx_int16_t max_diff;
+
     new_chat = 0;
     max_i = MAX_PING + 1;
     max_diff = -1;
 
     for( i = 0; i < MAX_PING; i++) {
       if(ping_track[i].NodeID == 0) { // reached the end of recorded pings
-        dbg("CarErr","Less than %d neighbors\n", i+1);
+        dbg("CarMisc","Less than %d neighbors\n", i+1);
         break;
       }
 
-      dbg("CarChat","For neighbor %d, difference is %d \n", i+1, abs(ping_track[i].firstPing - ping_track[i].lastPing));
+      dbg("CarMisc","For neighbor %d, difference is %d \n", i+1, abs(ping_track[i].firstPing - ping_track[i].lastPing));
 
       if(abs(ping_track[i].firstPing - ping_track[i].lastPing) > max_diff) { // found two pings with a larger difference (~higher rel speed)
         max_i = i;
         max_diff = abs(ping_track[i].firstPing - ping_track[i].lastPing);
-        dbg("CarChat","Node %d fastest one so far\n",ping_track[i].NodeID);
+        dbg("CarMisc","Node %d fastest one so far\n",ping_track[i].NodeID);
       }     
  
     }
     
     if(max_i <= MAX_PING) { // found a candidate
       new_chat = ping_track[max_i].NodeID;
-      dbg("CarChat","Set new chat buddy to %d\n", new_chat);
+      dbg("CarChat","Attempting to contact %d to enter Dead Zone Active\n", new_chat);
     }  
   }
+
+
 // ********** EVENT BEHAVIOR - GENERAL **********
 
   event void Boot.booted() {
     // global counter of pings transmitted (overflow not important, still helps with global ordering)
     no_ping = 0;
+
+    #ifdef SIM_MODE
+      call HeartBeatTimer.startPeriodic(SIM_UNIT*1024); // for simulation, need event every SIM_UNIT seconds to update position
+    #endif
+
     // upon booting, first start radio 
     call AMControl.start();
   }
@@ -323,7 +423,7 @@ implementation {
         }
         mote_busy = FALSE;
 
-        dbg("CarChat","Started mote in Dead Zone Quiescent Mode\n");
+        dbg("CarChat","Started mote %d in Dead Zone Quiescent Mode\n",TOS_NODE_ID);
       }
       else { // this node should operate as an infrastructure node
         mote_busy = TRUE;
@@ -343,25 +443,61 @@ implementation {
   event void AMControl.stopDone(error_t err) {
   }
 
+  #ifdef SIM_MODE
+  event void HeartBeatTimer.fired() {
+    // do nothing, will count as event for TOSSIM simulation environment (should trigger update)
+  }
+  #endif
+
+
 // ********** EVENT BEHAVIOR - Dead Zone Quiescent **********
 
 event void AdvBackoffTimer.fired() {
-    // reandom backoff timer for sending advertisement went off, check if communication is already taking place, else send adv
+    advMsg *pAdvMsg = (advMsg*)(call Packet3.getPayload(&AdvPkt,sizeof(advMsg)));
+  
+    pAdvMsg->dataID = mem_data.complData.dataID; // replace with actual Data ID from memory!!!
+    pAdvMsg->dType = mem_data.complData.dType;
+    pAdvMsg->vNum = mem_data.complData.vNum;
+    pAdvMsg->sourceAddr = (uint16_t)TOS_NODE_ID;
+    pAdvMsg->destAddr = new_chat;
+
+    // random backoff timer for sending advertisement went off, check if communication is already taking place, else send adv
+    dbg("CarMisc","    ******** Sending advertisement message to %d ********\n", new_chat);
+
+    if(call SendAdvMsg.send(AM_BROADCAST_ADDR,&AdvPkt,sizeof(advMsg)) == FAIL) { 
+      dbg("CarErr","Failed sending adv message \n");
+      ChangeState(DEADZ_Q);
+    }
+    else { 
+      dbg("CarMisc","Pending Dead Zone Active ---- IGNORING ALL MESSAGES!!\n");
+      state = DEADZ_A_pend;
+    }
   }
 
 event void PingRecTimer.fired() {
+    nx_uint16_t rTime;
+
     // done keeping record of pings, evaluate what's in the records and decide who to contact
-    dbg("CarChat","DONE keeping track of Pings !!!!!\n");
+    dbg("CarMisc","DONE keeping track of Pings !!!!!\n");
 
     call PingTimer.stop();
 
     selPing();
 
     if(new_chat > 0) {
-      dbg("CarChat","   ***** Initiating conversation with %d *****\n", new_chat);
+      dbg("CarMisc","   ***** Initiating conversation with %d *****\n", new_chat);
+
+      if( (TOS_NODE_ID % 3) == (new_chat % 3) && TOS_NODE_ID > new_chat) { // choose larger backoff for larger ID value
+        rTime = 4 * BACKOFF_PER;
+      } else {
+        rTime = ((TOS_NODE_ID % 3) + 1) * BACKOFF_PER;
+      } 
+
+      dbg("CarMisc","       ***** Waiting %d ms before sending adv *****\n", rTime);
+      call AdvBackoffTimer.startOneShot(rTime);
     }
     else {
-      dbg("CarChat","   ***** No one to talk to :( \n");
+      dbg("CarMisc","   ***** No one to talk to :( \n");
     }
     
   }
@@ -412,7 +548,13 @@ event void PingRecTimer.fired() {
         // safer way to obtain message payload
         chatMsg *rxMsg = (chatMsg*)(call Packet1.getPayload(msg,sizeof(chatMsg)));
 
-        dbg("CarChat","Received ping message %d from %d - checking for version number\n", rxMsg->no_ping, rxMsg->sourceAddr);
+        if( call AdvBackoffTimer.isRunning() ) { 
+          dbg("CarMisc","Pending advertisement sending, ignoring ping!!!\n");
+          return msg;
+        }
+
+
+        dbg("CarMisc","Received ping message %d from %d - checking for version number\n", rxMsg->no_ping, rxMsg->sourceAddr);
  
         #ifdef SIM_MODE
         rssi_value = (int16_t)(call TossimPacket.strength(msg));
@@ -423,11 +565,11 @@ event void PingRecTimer.fired() {
         if(rxMsg->vNum == 0 && !mote_busy) {             // ping signal received, print RSSI reading and log (if logging is on)
           call Leds.led1Toggle();
 
-          dbg("CarChat","Message has version 0, counting PING with RSSI %d\n", rssi_value);
+          dbg("CarChat","Counting PING with RSSI %d from node %d\n", rssi_value, rxMsg->sourceAddr);
 
           if( !(call PingRecTimer.isRunning())) {  // if this is the first ping since entering DEADZ_Q
             call PingRecTimer.startOneShot(2*PING_PER+1);
-            dbg("CarChat","Started recording pings\n");
+            dbg("CarMisc","Started recording pings\n");
           }
   
           #ifdef LOGGER_ON
@@ -474,6 +616,249 @@ event void PingRecTimer.fired() {
   event void SendPingMsg.sendDone(message_t* msg, error_t error) {
      call Leds.led0Toggle();
   }
+
+
+// ********** EVENT BEHAVIOR - Dead Zone Active **********
+
+// may be used if I decide to introduce a delay between receiving a request and servicing it
+  event void DataBackOffTimer.fired() {
+    
+  }
+
+  event void CommTOTimer.fired() {
+    // Dead Zone Active communication timed out, just go back to Dead Zone Quiescent mode
+    dbg("CarErr","Dead Zone Active Communication timed out!\n");
+  }
+
+  event message_t* ReceiveAdv.receive(message_t* msg, void* payload, uint8_t len) {
+
+    if( (uint16_t)TOS_NODE_ID < MAX_NODES ) {  
+      // if in LIVE ZONE, ignore
+      if(state == LIVEZ) {
+        return msg;
+      }
+      else { // packet may be of interest, get payload
+        advMsg *rxMsg = (advMsg*)(call Packet3.getPayload(msg,sizeof(advMsg))); 
+      
+        dbg("CarChat","!!** Received ADV packet from %d to %d **!! while in state %d\n",rxMsg->sourceAddr, rxMsg->destAddr, state);
+
+        if(rxMsg -> destAddr != (uint16_t)TOS_NODE_ID) { // if not for me, ignore
+          return msg;
+        }
+        else if(state == DEADZ_Q) { 
+        // if in DEADZ_Q, take this guy as comm partner (since it's an adv for me)
+        // also take the other as comm partner initiator if its NodeID is a lower number
+                // save information on infrastructure data received
+
+          atomic {
+            dbg("CarChat","Entering DEADZ_A as secondary with node %d\n", rxMsg->sourceAddr);
+
+            curr_comm.NodeID = rxMsg->sourceAddr;
+            curr_comm.sentAdv = 0;
+            curr_comm.rcvAdv = *rxMsg;
+            curr_comm.amInit = 0;
+            curr_comm.rcvReq = 0;
+ 
+            call AdvBackoffTimer.stop();
+
+            ChangeState(DEADZ_A);
+          }
+
+          #ifdef LOGGER_ON
+          
+          log_line.no_pings = 0;
+          log_line.sourceAddr = rxMsg->sourceAddr;
+          log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
+          log_line.vNum = rxMsg-> vNum;
+          log_line.pNum = rxMsg-> pNum;
+          log_line.sourceType = 2;
+
+          AddToLog(log_line);
+
+          #endif
+
+        }
+        else if(state==DEADZ_A) { // if in live zone, figure out if advertisement should be considered
+          dbg("CarChat","Received ADV while in dead zone active, considering whether to accept it\n");
+          if(curr_comm.NodeID == rxMsg->sourceAddr && rxMsg->destAddr == TOS_NODE_ID && curr_comm.sentAdv == 1 && curr_comm.rcvReq == 1) { 
+          // this is halfway point in communication exchange
+            call CommTOTimer.stop();
+            dbg("CarChat"," -- ADV is meant for me! --\n");
+            curr_comm.rcvAdv = *rxMsg;
+
+            #ifdef LOGGER_ON
+          
+            log_line.no_pings = 0;
+            log_line.sourceAddr = rxMsg->sourceAddr;
+            log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
+            log_line.vNum = rxMsg-> vNum;
+            log_line.pNum = rxMsg-> pNum;
+            log_line.sourceType = 2;
+
+            AddToLog(log_line);
+
+            #endif
+
+            findNextReq();
+          }
+        }
+    
+      }
+
+    }
+
+    return msg;
+  }
+
+  event void SendAdvMsg.sendDone(message_t* msg, error_t error) {
+    dbg("CarChat","DONE sending an advertisement message!\n");
+    if(error == SUCCESS && state == DEADZ_A_pend) {
+      atomic {  // this is the case when we enter Dead Zone Active as initiators
+        dbg("CarChat","Entering DEADZ_A as initiator with node %d\n", new_chat);
+        curr_comm.NodeID = new_chat;
+        curr_comm.sentAdv = 1;
+        curr_comm.amInit = 1;
+        curr_comm.rcvReq = 0;
+
+        ChangeState(DEADZ_A);
+      }
+    }
+
+    if(error == SUCCESS && state == DEADZ_A && curr_comm.sentAdv == 0) { // probably sent advertisement halfway thru comm
+      dbg("CarChat","Just sent ADV in my turn to other node\n");
+      curr_comm.sentAdv = 1;
+    }
+  }
+
+  event message_t* ReceiveReq.receive(message_t* msg, void* payload, uint8_t len) {
+    // if in LIVE ZONE, ignore
+    // if not for me, ignore
+    // if in DEADZ_A with another, ignore
+    	// immediately send data as requested
+
+    if(state == DEADZ_A) { 
+      reqMsg *rxMsg = (reqMsg*)(call Packet4.getPayload(msg,sizeof(reqMsg))); 
+  
+      if(rxMsg->sourceAddr == curr_comm.NodeID && rxMsg->destAddr == TOS_NODE_ID) { // request part of current comm
+      
+        call CommTOTimer.stop();
+ 
+        #ifdef LOGGER_ON
+          
+        log_line.no_pings = 0;
+        log_line.sourceAddr = rxMsg->sourceAddr;
+        log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
+        log_line.vNum = rxMsg-> vNum;
+        log_line.pNum = rxMsg-> pNum;
+        log_line.sourceType = 3;
+
+        AddToLog(log_line);
+
+        #endif
+
+
+        if(rxMsg->dataID == 0) { // null request, return to DEADZ_Q if not initiator
+          curr_comm.rcvReq = 1;
+          if(curr_comm.amInit == 0) {
+            dbg("CarChat","Received a NULL request, going back to DEADZ_Q\n");
+            ChangeState(DEADZ_Q);
+          }
+          else {
+            dbg("CarChat","Received a NULL request, waiting for other to send ADV\n");
+            call CommTOTimer.startOneShot(3*PING_PER);
+          }
+        }
+        else { // real request, respond with data
+          dbg("CarMisc","Attempting to provide version %d, packet %d to %d\n");
+          if(rxMsg->dataID != mem_data.complData.dataID || rxMsg->dType != mem_data.complData.dType) { // request for invalid data
+            dbg("CarMisc","Invalid data type requested!\n");
+            return msg;
+          }
+          // should have data if request is sent, but just in case, send back NULL request/adv if data is invalid
+          if(mem_data.complData.vNum == rxMsg->vNum || (mem_data.incomData.vNum == rxMsg->vNum && mem_data.incomData.pNum)) {
+            dataMsg *pdataMsg = (dataMsg*)(call Packet5.getPayload(&DataPack,sizeof(dataMsg)));
+
+            pdataMsg->dataID = rxMsg->dataID; 
+            pdataMsg->dType = rxMsg->dType;
+            pdataMsg->vNum = rxMsg->vNum;
+            pdataMsg->sourceAddr = TOS_NODE_ID;
+            pdataMsg->pNum = rxMsg->pNum;
+            pdataMsg->tPack = mem_data.totalPack;
+
+            if(call SendDataMsg.send(AM_BROADCAST_ADDR, &DataPack, sizeof(dataMsg)) == SUCCESS) {
+              call CommTOTimer.startOneShot(3*PING_PER);
+            }
+          }
+        }
+      }
+    }
+
+    return msg;
+  }
+
+  event void SendReqMsg.sendDone(message_t* msg, error_t error) {
+    // if NULL request was sent and node is NOT initiator, follow up with own advertisement
+    reqMsg* sentMsg = (reqMsg*)(call Packet4.getPayload(&ReqPkt,sizeof(reqMsg)));
+
+    if(sentMsg->dataID == 0) { // null request was sent 
+      if(curr_comm.amInit == 0) { // non-initiator, then send own NULL request
+        advMsg* pAdvMsg = (advMsg*)(call Packet3.getPayload(&AdvPkt,sizeof(advMsg))); 
+  
+        pAdvMsg->dataID = mem_data.complData.dataID; 
+        pAdvMsg->dType = mem_data.complData.dType;
+        pAdvMsg->vNum = mem_data.complData.vNum;
+        pAdvMsg->sourceAddr = (uint16_t)TOS_NODE_ID;
+        pAdvMsg->destAddr = curr_comm.NodeID;
+
+        if(call SendAdvMsg.send(AM_BROADCAST_ADDR,&AdvPkt,sizeof(advMsg)) == FAIL) { 
+          dbg("CarErr","Failed sending adv message \n");
+          ChangeState(DEADZ_Q);
+        }
+        else {
+          dbg("CarChat","Sending own adv, pending DEADZ_A\n");
+          call CommTOTimer.startOneShot(3*PING_PER);
+        }
+      }
+      else { // initiator, can go back to DEADZ_Q
+         ChangeState(DEADZ_Q);
+      }
+    }
+  }
+
+  event message_t* ReceiveData.receive(message_t* msg, void* payload, uint8_t len) {
+    if(TOS_NODE_ID < MAX_NODES && state != LIVEZ) {
+      // if data is relevant, save, else drop packet
+      dataMsg* rxMsg = (dataMsg*)(call Packet5.getPayload(&DataPack,sizeof(dataMsg)));
+
+      #ifdef LOGGER_ON
+          
+      log_line.no_pings = 0;
+      log_line.sourceAddr = rxMsg->sourceAddr;
+      log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
+      log_line.vNum = rxMsg-> vNum;
+      log_line.pNum = rxMsg-> pNum;
+      log_line.sourceType = 2;
+
+      AddToLog(log_line);
+
+      #endif
+
+      // ***** upload data *****
+      updateData(*rxMsg);
+
+      // if data is from communication partner, send next request back
+      if(state == DEADZ_Q && curr_comm.NodeID == rxMsg->sourceAddr) { 
+        findNextReq();
+      }
+    }
+
+    return msg;
+  }
+
+  event void SendDataMsg.sendDone(message_t* msg, error_t error) {
+  }
+
+
 
   
 // ********** EVENT BEHAVIOR - Live Zone **********
@@ -523,46 +908,6 @@ event void PingRecTimer.fired() {
     return msg;
   }
 
-// ********** EVENT BEHAVIOR - Dead Zone Active **********
-
-  event void CommTOTimer.fired() {
-    // Dead Zone Active communication timed out, just go back to Dead Zone Quiescent mode
-  }
-
-  event message_t* ReceiveAdv.receive(message_t* msg, void* payload, uint8_t len) {
-    // if in LIVE ZONE, ignore
-    // if not for me, ignore
-    // if in DEADZ_Q, take this guy as comm partner
-	    //determine what, if anything I need, and send req for first of packets
-
-    // if in DEADZ_A with another (more useful), ignore
-	    //determine what, if anything I need, and send req for first of packets
-
-    return msg;
-  }
-
-  event void SendAdvMsg.sendDone(message_t* msg, error_t error) {
-  }
-
-  event message_t* ReceiveReq.receive(message_t* msg, void* payload, uint8_t len) {
-    // if in LIVE ZONE, ignore
-    // if not for me, ignore
-    // if in DEADZ_A with another, ignore
-    	// immediately send data as requested
-
-    return msg;
-  }
-
-  event void SendReqMsg.sendDone(message_t* msg, error_t error) {
-  }
-
-  event message_t* ReceiveData.receive(message_t* msg, void* payload, uint8_t len) {
-    // if data is relevant, save, else drop packet
-    return msg;
-  }
-
-  event void SendDataMsg.sendDone(message_t* msg, error_t error) {
-  }
 
 
 // ********** EVENT BEHAVIOR - Logging **********  

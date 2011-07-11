@@ -37,6 +37,11 @@ implementation {
   components new TimerMilliC() as AdvBackoffTimer; // timer for random backoff for sending timer (to avoid collisions)
   components new TimerMilliC() as CommTOTimer; // timer to end communication in DEADZ_A if it times out
 
+  components new TimerMilliC() as DataBackOffTimer; // timer to end communication in DEADZ_A if it times out
+
+
+  components  RandomLfsrC;
+
 #ifdef PING_SUPPR
   components new TimerMilliC() as PingSupprTimer;
   CarChatC.PingSupprTimer -> PingSupprTimer;
@@ -44,6 +49,7 @@ implementation {
 
 #ifdef SIM_MODE
   components TossimActiveMessageC as TossimMsgC;
+  components new TimerMilliC() as HeartBeatTimer;
 #else
   components CC2420ActiveMessageC as CC2420MsgC;
 #endif
@@ -57,6 +63,7 @@ implementation {
   CarChatC.PingRecTimer -> PingRecTimer;
   CarChatC.AdvBackoffTimer -> AdvBackoffTimer;
   CarChatC.CommTOTimer -> CommTOTimer;
+  CarChatC.DataBackOffTimer -> DataBackOffTimer;
 
   CarChatC.Packet1 -> AMSender1; 
   CarChatC.ReceivePing -> AMReceiver1;
@@ -75,8 +82,11 @@ implementation {
   CarChatC.Packet5 -> AMSender5;
   CarChatC.SendDataMsg -> AMSender5.AMSend;
 
+  CarChatC.Random ->  RandomLfsrC;
+ 
 #ifdef SIM_MODE
   CarChatC -> TossimMsgC.TossimPacket;
+  CarChatC.HeartBeatTimer ->  HeartBeatTimer;
 #else
   CarChatC -> CC2420MsgC.CC2420Packet;
 #endif

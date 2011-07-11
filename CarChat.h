@@ -18,20 +18,22 @@ enum {
   INFR_TIMEOUT = 10,    //time in seconds until live zone times out
   CAR_TIMEOUT = 3,      // time in seconds until dead zone active times out
   INFRMSG_PER = 1024,   // time between transmissions, in ms (for infrastructure nodes)
-  BACKOFF_MAX = 500,    // time for random backoff in ms for sending advertisement
+  BACKOFF_PER = 525,    // time for random backoff in ms for sending advertisement
 
   DATASIZE = 30,        // amount of data transmitted per packet
 
   LIVEZ = 1,		// state encoding
   DEADZ_Q = 2,
   DEADZ_A = 3,
+  DEADZ_A_pend = 4,
   INFR_NODE = 0xFF,	// special state for nodes operating in infrastructure mode
 
   MAX_NODES = 100,	// this is how many nodes can operate in vehicular mode, anything with higher ID will be infrastructure
   TEST_ID = 94,          // in simple tests, only 1 data item will circulate from infrastructure
   MAX_DATA = 1,
   MAX_PING = 5,
-  LOG_MAX = 10
+  LOG_MAX = 10,
+  SIM_UNIT = 0.3	// in seconds, smallest unit of simulation time update
 };
 
 // dissemination packet
@@ -93,6 +95,8 @@ typedef nx_struct infrItem {
 typedef nx_struct actComm {
   nx_uint16_t NodeID; // 0 for no current communication in progress (reset when going to DEADZ_Q)
   nx_uint8_t sentAdv; // 0 for not yet, 1 for yes
+   nx_uint8_t amInit; // 1 if node was initiator - meaning it won't accept adv until it's received a req; ** redundant wrt sentAdv **
+  nx_uint8_t rcvReq; // 1 if null request was sent by NodeID ;  ** may be redundant **
   advMsg rcvAdv; // store advertisement received to determine what packet we need next
 } actComm;
 
