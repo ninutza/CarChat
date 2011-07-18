@@ -93,7 +93,6 @@ implementation {
 
 #ifdef LOGGER_ON
   logInput log_buf;	// save aggregate log data, which will all be written at once
-  logLine log_line;
   nx_uint8_t log_idx;
 #endif
   bool mote_busy;
@@ -298,6 +297,7 @@ implementation {
   // add log entry to log buffer
   void AddToLog(logLine newEntry) {
     // update all entries in log array
+
     log_buf.sourceType[log_idx] = newEntry.sourceType;
     log_buf.no_pings[log_idx] = newEntry.no_pings;
     log_buf.sourceAddr[log_idx] = newEntry.sourceAddr;
@@ -322,13 +322,14 @@ implementation {
   void updateData(dataMsg newData) {
 
     #ifdef LOGGER_ON
+    logLine log_line;
     // insert in log data which updateData was called with     
+    log_line.sourceType = 8;
     log_line.no_pings = 0;
     log_line.sourceAddr = newData.sourceAddr;
     log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
     log_line.vNum = newData.vNum;
     log_line.pNum = newData.pNum;
-    log_line.sourceType = 8;
 
     AddToLog(log_line);
 
@@ -667,6 +668,9 @@ event void PingRecTimer.fired() {
         #endif
 
         if(rxMsg->vNum == 0 && !mote_busy) {             // ping signal received, print RSSI reading and log (if logging is on)
+          #ifdef LOGGER_ON
+            logLine log_line;
+          #endif
           call Leds.led1Toggle();
 
           dbg("CarChat","Counting PING with RSSI %d from node %d\n", rssi_value, rxMsg->sourceAddr);
@@ -756,6 +760,10 @@ event void PingRecTimer.fired() {
         // also take the other as comm partner initiator if its NodeID is a lower number
                 // save information on infrastructure data received
 
+          #ifdef LOGGER_ON
+            logLine log_line;
+          #endif
+
           atomic {
             dbg("CarChat","Entering DEADZ_A as secondary with node %d\n", rxMsg->sourceAddr);
 
@@ -787,6 +795,11 @@ event void PingRecTimer.fired() {
         else if(state==DEADZ_A) { // if in live zone, figure out if advertisement should be considered
           dbg("CarChat","Received ADV while in dead zone active, considering whether to accept it\n");
           if(curr_comm.NodeID == rxMsg->sourceAddr && rxMsg->destAddr == TOS_NODE_ID && curr_comm.sentAdv == 1 && curr_comm.rcvReq == 1) { 
+
+            #ifdef LOGGER_ON
+              logLine log_line;
+            #endif
+
           // this is halfway point in communication exchange
             call CommTOTimer.stop();
             dbg("CarChat"," -- ADV is meant for me! --\n");
@@ -847,6 +860,9 @@ event void PingRecTimer.fired() {
       reqMsg *rxMsg = (reqMsg*)(call Packet4.getPayload(msg,sizeof(reqMsg))); 
   
       if(rxMsg->sourceAddr == curr_comm.NodeID && rxMsg->destAddr == TOS_NODE_ID) { // request part of current comm
+        #ifdef LOGGER_ON
+          logLine log_line;
+        #endif
       
         call CommTOTimer.stop();
  
@@ -945,6 +961,7 @@ event void PingRecTimer.fired() {
       dataMsg* rxMsg = (dataMsg*)(call Packet5.getPayload(msg,sizeof(dataMsg)));
 
       #ifdef LOGGER_ON
+      logLine log_line;
           
       log_line.no_pings = 0;
       log_line.sourceAddr = rxMsg->sourceAddr;
@@ -990,6 +1007,9 @@ event void PingRecTimer.fired() {
   event message_t* ReceiveInfr.receive(message_t* msg, void* payload, uint8_t len) {
     
     if( (uint16_t)TOS_NODE_ID < MAX_NODES ) {  // only process infrastructure message if node is vehicular
+      #ifdef LOGGER_ON
+        logLine log_line;
+      #endif
  
       // safer way to obtain message payload
       dataMsg *rxMsg = (dataMsg*)(call Packet2.getPayload(msg,sizeof(dataMsg)));
@@ -1004,12 +1024,12 @@ event void PingRecTimer.fired() {
       // save information on infrastructure data received
       #ifdef LOGGER_ON
           
+      log_line.sourceType = 0;
       log_line.no_pings = 0;
       log_line.sourceAddr = rxMsg->sourceAddr;
       log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
       log_line.vNum = rxMsg-> vNum;
       log_line.pNum = rxMsg-> pNum;
-      log_line.sourceType = 0;
 
       AddToLog(log_line);
 
