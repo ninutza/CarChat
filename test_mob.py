@@ -7,15 +7,15 @@ import time
 import Network
 import Radio
 
-
-# start out with 2 vehicular nodes, wallking past each other in 10 steps (1 sec intervals)
+NO_VEH = 8;
+# start out with 2 vehicular nodes, wallking past each other in 10 1 second 
 t = Tossim([]);
 r = t.radio();
 network = Network.Network();
 
 # initialize update parameters
 lastUpdate = t.time();
-updateRate = 1 * t.ticksPerSecond();  #update position every 1 second
+updateRate = 0.3 * t.ticksPerSecond();  #update position every 1 second
 print "Update rate in ticks is ", updateRate
 
 stopTime = t.time() + 20 * updateRate;
@@ -54,7 +54,7 @@ newMote1.attr["stucktime"] = 0
 network.addMote(newMote1);
 Radio.initMote(network, r, newMote1);
 
-Radio.updateNetworkLinkGains(r, network)
+#Radio.updateNetworkLinkGains(r, network)
 
 # initialize output channels for debugging statements
 t.addChannel("CarChat", sys.stdout)

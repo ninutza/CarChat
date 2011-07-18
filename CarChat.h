@@ -9,10 +9,10 @@
 
 enum {
   AM_PINGMSG = 167,	// AM type for ping(beacon) messages
-  AM_INFRMSG = 168,     // AM type for infrastructure messages 
-  AM_ADVMSG = 169,      // AM type for advertisement messages 
-  AM_REQMSG = 170,      // AM type for request messages 
-  AM_DATAMSG = 171,     // AM type for data messages 
+  AM_INFRMSG = 173,     // AM type for infrastructure messages 
+  AM_ADVMSG = 179,      // AM type for advertisement messages 
+  AM_REQMSG = 185,      // AM type for request messages 
+  AM_DATAMSG = 191,     // AM type for data messages 
 
   PING_PER = 1000,      // ping interval in ms
   INFR_TIMEOUT = 10,    //time in seconds until live zone times out
@@ -28,12 +28,12 @@ enum {
   DEADZ_A_pend = 4,
   INFR_NODE = 0xFF,	// special state for nodes operating in infrastructure mode
 
-  MAX_NODES = 100,	// this is how many nodes can operate in vehicular mode, anything with higher ID will be infrastructure
+  MAX_NODES = 300,	// this is how many nodes can operate in vehicular mode, anything with higher ID will be infrastructure
   TEST_ID = 94,          // in simple tests, only 1 data item will circulate from infrastructure
   MAX_DATA = 1,
   MAX_PING = 5,
   LOG_MAX = 10,
-  SIM_UNIT = 0.3	// in seconds, smallest unit of simulation time update
+  SIM_UNIT = 308	// in ms, smallest unit of simulation time update
 };
 
 // dissemination packet

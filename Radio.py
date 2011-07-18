@@ -9,7 +9,7 @@ n = 3.0 # path loss exponent
 sigma = 3.0 # standard deviation shadowing variance
 d0 = 1.0 # reference distance
 #pld0  = 55.0 # power decay for reference distance d0
-pld0  = 25.0 # power decay for reference distance d0
+pld0  = 35.0 # power decay for reference distance d0
 
 # Radio parameters
 pn = -105 # radio noise floor, not required for CPM
@@ -77,8 +77,9 @@ def setLinkGain(radio, mote1, mote2):
 		link1 = 1.0
 	if link2 > 1.0:
 		link2 = 1.0
-        if (mote1.id() != mote2.id()):
-          print " **** Between links ",mote1.id(), " and ", mote2.id(), " connectivity ", link1, " and ", link2
+        # debugging link connections, slows down program
+        #if (mote1.id() != mote2.id()):
+        #  print " **** Between links ",mote1.id(), " and ", mote2.id(), " connectivity ", link1, " and ", link2
         radio.add(mote1.id(), mote2.id(), link1)
         radio.add(mote2.id(), mote1.id(), link2)
 

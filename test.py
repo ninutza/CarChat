@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 from TOSSIM import *
 import sys
 
@@ -20,7 +20,7 @@ t.addChannel("ActiveChat",sys.stdout)
 t.addChannel("InfrChat", sys.stdout)
 t.addChannel("InfrErr", sys.stdout)
 # t.addChannel("Boot", sys.stdout)
-# t.addChannel("CarMisc",sys.stdout) # debugging statements for intermediary steps
+#t.addChannel("CarMisc",sys.stdout) # debugging statements for intermediary steps
 
 noise = open("meyer-heavy.txt", "r")
 lines = noise.readlines()
@@ -43,7 +43,7 @@ t.getNode(1).bootAtTime(100001);
 t.getNode(2).bootAtTime(100125);
 #t.getNode(3).bootAtTime(100009);
 
-for i in range(0, 300):
+for i in range(0, 500):
   t.runNextEvent()
   #print "Time is ", t.time()
 
