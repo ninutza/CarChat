@@ -155,7 +155,7 @@ implementation {
  
       pReqMsg->dataID = 0;
       pReqMsg->destAddr = curr_comm.NodeID;
-      pReqMsg->sourceAddr = TOS_NODE_ID;
+      pReqMsg->sourceAddr = (uint16_t)TOS_NODE_ID;
  
       dbg("CarChat","Sending NULL request ......\n");
 
@@ -298,6 +298,7 @@ implementation {
   // add log entry to log buffer
   void AddToLog(logLine newEntry) {
     // update all entries in log array
+    log_buf.sourceType[log_idx] = newEntry.sourceType;
     log_buf.no_pings[log_idx] = newEntry.no_pings;
     log_buf.sourceAddr[log_idx] = newEntry.sourceAddr;
     log_buf.sig_val[log_idx] = newEntry.sig_val;
@@ -319,6 +320,34 @@ implementation {
 
   // after receiving a data message either from the infrastructure or from another node, see where it fits in
   void updateData(dataMsg newData) {
+
+    #ifdef LOGGER_ON
+    // insert in log data which updateData was called with     
+    log_line.no_pings = 0;
+    log_line.sourceAddr = newData.sourceAddr;
+    log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
+    log_line.vNum = newData.vNum;
+    log_line.pNum = newData.pNum;
+    log_line.sourceType = 8;
+
+    AddToLog(log_line);
+
+    #endif
+
+
+    //#ifdef LOGGER_ON
+    // insert in log data which updateData is dealing with in memory 
+    //log_line.no_pings = 0;
+    //log_line.sourceAddr = (uint16_t)TOS_NODE_ID;
+    //log_line.sig_val = ((mem_data.incomData.dataID) << 8) + (mem_data.incomData.dType);	
+    //log_line.vNum = mem_data.incomData.vNum;
+    //log_line.pNum = mem_data.incomData.pNum;
+    //log_line.sourceType = 9;
+
+    //AddToLog(log_line);
+
+    //#endif
+
 
     if(mem_data.incomData.dataID == 0) { // started with a blank slate, initialize dataID and dType in memory
       mem_data.incomData.dataID = newData.dataID;
@@ -348,6 +377,20 @@ implementation {
 
         dbg("CarData"," --- Most recent data status is version %d in complete and version %d, packet %d in incomplete ---\n", 
             mem_data.complData.vNum, mem_data.incomData.vNum, mem_data.incomData.pNum);
+
+        //#ifdef LOGGER_ON
+          
+        //log_line.no_pings = 0;
+        //log_line.sourceAddr = newData.sourceAddr;
+        //log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
+        //log_line.vNum = newData.vNum;
+        //log_line.pNum = newData.pNum;
+        //log_line.sourceType = 8;
+
+        //AddToLog(log_line);
+
+        //#endif
+
 
         if(mem_data.complData.vNum > 0 && mem_data.incomData.pNum == mem_data.totalPack) {
           // output for file concerned with completion of data updates
@@ -449,6 +492,21 @@ implementation {
 
       if((uint16_t)TOS_NODE_ID < MAX_NODES) // this node is a vehicular node
       {
+
+       mem_data.totalPack = 0;
+       mem_data.complData.dataID = 0;
+       mem_data.complData.dType = 0;
+       mem_data.complData.vNum = 0;
+       mem_data.complData.sourceAddr = 0;
+       mem_data.complData.destAddr = 0;	
+       mem_data.complData.pNum = 0; 
+
+       mem_data.incomData.dataID = 0;
+       mem_data.incomData.dType = 0;
+       mem_data.incomData.vNum = 0;
+       mem_data.incomData.sourceAddr = 0;
+       mem_data.incomData.destAddr = 0;	
+       mem_data.incomData.pNum = 0; 
 
         #ifdef LOGGER_ON
           log_idx = 0;
@@ -638,7 +696,7 @@ event void PingRecTimer.fired() {
         
           if(number_pings >= 10 && !(call PingSupprTimer.isRunning()))  // if received too many pings and haven't suppressed yet
           {
-            dbg("CarErr"," ***** Too many PINGS, starting quiet period for congestion control *****\n");
+            dbg("CarData"," ***** Too many PINGS, starting quiet period for congestion control *****\n");
             call PingTimer.stop();
             call PingSupprTimer.startOneShot(PING_PER);
           }
@@ -893,7 +951,7 @@ event void PingRecTimer.fired() {
       log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
       log_line.vNum = rxMsg-> vNum;
       log_line.pNum = rxMsg-> pNum;
-      log_line.sourceType = 2;
+      log_line.sourceType = 4;
 
       AddToLog(log_line);
 
@@ -939,9 +997,9 @@ event void PingRecTimer.fired() {
       dbg("CarChat","Received infrastructure message, data ID %d (type %d), version number %d, packet %d of %d\n", 
           rxMsg->dataID, rxMsg->dType, rxMsg->vNum, rxMsg->pNum, rxMsg->tPack);
 
+
       atomic {
-          ChangeState(LIVEZ);
-        }
+      updateData(*rxMsg);
 
       // save information on infrastructure data received
       #ifdef LOGGER_ON
@@ -956,8 +1014,11 @@ event void PingRecTimer.fired() {
       AddToLog(log_line);
 
       #endif
-
-      updateData(*rxMsg);
+      }
+      
+      atomic {
+          ChangeState(LIVEZ);
+        }
 
     }
  
@@ -1004,7 +1065,6 @@ event void PingRecTimer.fired() {
     pInfrMsg->dType = infr_data.complData.dType;
     pInfrMsg->vNum = infr_data.complData.vNum;
     pInfrMsg->sourceAddr = infr_data.complData.sourceAddr;
-    pInfrMsg->dType = infr_data.complData.dType;
     pInfrMsg->pNum = infr_data.complData.pNum;
     pInfrMsg->tPack = infr_data.totalPack;
 

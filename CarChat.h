@@ -2,8 +2,8 @@
 #ifndef CARCHAT_H
 #define CARCHAT_H
 
-//#define LOGGER_ON
-#define SIM_MODE
+#define LOGGER_ON
+//#define SIM_MODE
 
 //#define PING_SUPPR	// suppress pinging for 10*ping interval if more than 10 pings are heard in any one interval 	
 
@@ -39,10 +39,10 @@ enum {
 // dissemination packet
 typedef nx_struct dataMsg {
   nx_uint8_t dataID; // unique data identifier
-  nx_uint8_t vNum; //version number
-  nx_uint16_t sourceAddr; // always 0 for infrastructure nodes
   nx_uint8_t dType; //data type (i.e. 1 = weather, 2 = traffic, 3 = worksites)
+  nx_uint8_t vNum; //version number
   nx_uint8_t pNum; //packet number
+  nx_uint16_t sourceAddr; // always 0 for infrastructure nodes
   nx_uint8_t tPack; // total number of packets
   nx_uint8_t data[DATASIZE]; // data contents
 } dataMsg;
@@ -52,9 +52,9 @@ typedef nx_struct reqMsg {
   nx_uint8_t dataID;
   nx_uint8_t dType;
   nx_uint8_t vNum;
+  nx_uint8_t pNum; // packet number will be 0 if complete data is requested. else, number of first missing packet is transmitted
   nx_uint16_t sourceAddr;
   nx_uint16_t destAddr;
-  nx_uint8_t pNum; // packet number will be 0 if complete data is requested. else, number of first missing packet is transmitted
 } reqMsg;
 
 // advertisement message packet
