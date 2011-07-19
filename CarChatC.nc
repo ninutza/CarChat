@@ -93,9 +93,13 @@ implementation {
 
 #ifdef LOGGER_ON
   logInput log_buf;	// save aggregate log data, which will all be written at once
+  logLine log_line;
   nx_uint8_t log_idx;
 #endif
   bool mote_busy;
+
+  // TRY to see if global newData works better
+  dataMsg newData;
   
   // variables used for infrastructure nodes
   message_t InfrPkt;
@@ -207,7 +211,7 @@ implementation {
         // set state to LIVEZ
         state = LIVEZ;    
         // turn on RED LED to signify in live zone
-        call Leds.led0On();
+        //call Leds.led0On();
       }
       else {  // if already in live zone, reset timeout timer
         dbg("CarChat"," ... though already in Live Zone state\n");
@@ -295,15 +299,15 @@ implementation {
 
 #ifdef LOGGER_ON
   // add log entry to log buffer
-  void AddToLog(logLine newEntry) {
+  task void AddToLog() {
     // update all entries in log array
 
-    log_buf.sourceType[log_idx] = newEntry.sourceType;
-    log_buf.no_pings[log_idx] = newEntry.no_pings;
-    log_buf.sourceAddr[log_idx] = newEntry.sourceAddr;
-    log_buf.sig_val[log_idx] = newEntry.sig_val;
-    log_buf.vNum[log_idx] = newEntry.vNum;
-    log_buf.pNum[log_idx] = newEntry.pNum;
+    log_buf.sourceType[log_idx] = log_line.sourceType;
+    log_buf.no_pings[log_idx] = log_line.no_pings;
+    log_buf.sourceAddr[log_idx] = log_line.sourceAddr;
+    log_buf.sig_val[log_idx] = log_line.sig_val;
+    log_buf.vNum[log_idx] = log_line.vNum;
+    log_buf.pNum[log_idx] = log_line.pNum;
 
     log_idx = log_idx + 1;
 
@@ -319,38 +323,24 @@ implementation {
 
 
   // after receiving a data message either from the infrastructure or from another node, see where it fits in
-  void updateData(dataMsg newData) {
+  void updateData() { //dataMsg newData) {
 
-    #ifdef LOGGER_ON
-    logLine log_line;
-    // insert in log data which updateData was called with     
-    log_line.sourceType = 8;
-    log_line.no_pings = 0;
-    log_line.sourceAddr = newData.sourceAddr;
-    log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
-    log_line.vNum = newData.vNum;
-    log_line.pNum = newData.pNum;
+        //#ifdef LOGGER_ON
+          
+        log_line.no_pings =  mem_data.incomData.pNum;
+        log_line.sourceAddr = newData.sourceAddr;
+        log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
+        log_line.vNum = newData.vNum;
+        log_line.pNum = newData.pNum;
+        log_line.sourceType = 8;
 
-    AddToLog(log_line);
+        post AddToLog();
 
-    #endif
-
-
-    //#ifdef LOGGER_ON
-    // insert in log data which updateData is dealing with in memory 
-    //log_line.no_pings = 0;
-    //log_line.sourceAddr = (uint16_t)TOS_NODE_ID;
-    //log_line.sig_val = ((mem_data.incomData.dataID) << 8) + (mem_data.incomData.dType);	
-    //log_line.vNum = mem_data.incomData.vNum;
-    //log_line.pNum = mem_data.incomData.pNum;
-    //log_line.sourceType = 9;
-
-    //AddToLog(log_line);
-
-    //#endif
+        //#endif
 
 
     if(mem_data.incomData.dataID == 0) { // started with a blank slate, initialize dataID and dType in memory
+      //call Leds.led2Toggle();
       mem_data.incomData.dataID = newData.dataID;
       mem_data.incomData.dType = newData.dType;
       mem_data.complData.dataID = newData.dataID;
@@ -362,6 +352,7 @@ implementation {
       // error, stray data type in system
       dbg("CarChat","ERROR, unknown data type %d (ID %d) received, I have %d (ID %d) --- from %d\n", 
           newData.dataID, newData.dType, mem_data.incomData.dataID,mem_data.incomData.dType, newData.sourceAddr);
+      //call Leds.led0Toggle();
     }
     else {
       if(newData.vNum > mem_data.incomData.vNum) { // received packet from new data version, reset partial version
@@ -381,14 +372,14 @@ implementation {
 
         //#ifdef LOGGER_ON
           
-        //log_line.no_pings = 0;
+        //log_line.no_pings =  mem_data.incomData.pNum;
         //log_line.sourceAddr = newData.sourceAddr;
         //log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
         //log_line.vNum = newData.vNum;
         //log_line.pNum = newData.pNum;
         //log_line.sourceType = 8;
 
-        //AddToLog(log_line);
+        //post AddToLog();
 
         //#endif
 
@@ -668,9 +659,7 @@ event void PingRecTimer.fired() {
         #endif
 
         if(rxMsg->vNum == 0 && !mote_busy) {             // ping signal received, print RSSI reading and log (if logging is on)
-          #ifdef LOGGER_ON
-            logLine log_line;
-          #endif
+          
           call Leds.led1Toggle();
 
           dbg("CarChat","Counting PING with RSSI %d from node %d\n", rssi_value, rxMsg->sourceAddr);
@@ -689,7 +678,7 @@ event void PingRecTimer.fired() {
           log_line.pNum = 0;
           log_line.sourceType = 1;
 
-	  AddToLog(log_line);
+	  post AddToLog();
 
           #endif
 
@@ -760,10 +749,7 @@ event void PingRecTimer.fired() {
         // also take the other as comm partner initiator if its NodeID is a lower number
                 // save information on infrastructure data received
 
-          #ifdef LOGGER_ON
-            logLine log_line;
-          #endif
-
+          
           atomic {
             dbg("CarChat","Entering DEADZ_A as secondary with node %d\n", rxMsg->sourceAddr);
 
@@ -780,14 +766,14 @@ event void PingRecTimer.fired() {
 
           #ifdef LOGGER_ON
           
-          log_line.no_pings = 0;
+          log_line.no_pings =  mem_data.incomData.pNum;
           log_line.sourceAddr = rxMsg->sourceAddr;
           log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
           log_line.vNum = rxMsg-> vNum;
           log_line.pNum = 0;
           log_line.sourceType = 2;
 
-          AddToLog(log_line);
+          post AddToLog();
 
           #endif
 
@@ -796,10 +782,7 @@ event void PingRecTimer.fired() {
           dbg("CarChat","Received ADV while in dead zone active, considering whether to accept it\n");
           if(curr_comm.NodeID == rxMsg->sourceAddr && rxMsg->destAddr == TOS_NODE_ID && curr_comm.sentAdv == 1 && curr_comm.rcvReq == 1) { 
 
-            #ifdef LOGGER_ON
-              logLine log_line;
-            #endif
-
+            
           // this is halfway point in communication exchange
             call CommTOTimer.stop();
             dbg("CarChat"," -- ADV is meant for me! --\n");
@@ -807,14 +790,14 @@ event void PingRecTimer.fired() {
 
             #ifdef LOGGER_ON
           
-            log_line.no_pings = 0;
+            log_line.no_pings =  mem_data.incomData.pNum;
             log_line.sourceAddr = rxMsg->sourceAddr;
             log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
             log_line.vNum = rxMsg-> vNum;
             log_line.pNum = 0;
             log_line.sourceType = 2;
 
-            AddToLog(log_line);
+            post AddToLog();
 
             #endif
 
@@ -860,22 +843,19 @@ event void PingRecTimer.fired() {
       reqMsg *rxMsg = (reqMsg*)(call Packet4.getPayload(msg,sizeof(reqMsg))); 
   
       if(rxMsg->sourceAddr == curr_comm.NodeID && rxMsg->destAddr == TOS_NODE_ID) { // request part of current comm
-        #ifdef LOGGER_ON
-          logLine log_line;
-        #endif
       
         call CommTOTimer.stop();
  
         #ifdef LOGGER_ON
           
-        log_line.no_pings = 0;
+        log_line.no_pings =  mem_data.incomData.pNum;
         log_line.sourceAddr = rxMsg->sourceAddr;
         log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
         log_line.vNum = rxMsg-> vNum;
         log_line.pNum = rxMsg-> pNum;
         log_line.sourceType = 3;
 
-        AddToLog(log_line);
+        post AddToLog();
 
         #endif
 
@@ -959,23 +939,31 @@ event void PingRecTimer.fired() {
     if(TOS_NODE_ID < MAX_NODES && state != LIVEZ) {
       // if data is relevant, save, else drop packet
       dataMsg* rxMsg = (dataMsg*)(call Packet5.getPayload(msg,sizeof(dataMsg)));
+      //dataMsg newData;
 
       #ifdef LOGGER_ON
-      logLine log_line;
-          
-      log_line.no_pings = 0;
+      
+      log_line.no_pings = mem_data.incomData.pNum;
       log_line.sourceAddr = rxMsg->sourceAddr;
       log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
       log_line.vNum = rxMsg-> vNum;
       log_line.pNum = rxMsg-> pNum;
       log_line.sourceType = 4;
 
-      AddToLog(log_line);
+      post AddToLog();
 
       #endif
 
       // ***** upload data *****
-      updateData(*rxMsg);
+      atomic {
+        newData.dataID = rxMsg->dataID;
+        newData.dType = rxMsg->dType;
+        newData.vNum = rxMsg->vNum; 
+        newData.pNum = rxMsg->pNum;
+        newData.sourceAddr = rxMsg->sourceAddr;
+        newData.tPack = rxMsg->tPack;
+        updateData(); //newData);
+      }
 
       // if data is from communication partner, send next request back
       if(state == DEADZ_Q && curr_comm.NodeID == rxMsg->sourceAddr) { 
@@ -1007,33 +995,41 @@ event void PingRecTimer.fired() {
   event message_t* ReceiveInfr.receive(message_t* msg, void* payload, uint8_t len) {
     
     if( (uint16_t)TOS_NODE_ID < MAX_NODES ) {  // only process infrastructure message if node is vehicular
-      #ifdef LOGGER_ON
-        logLine log_line;
-      #endif
- 
+       
       // safer way to obtain message payload
       dataMsg *rxMsg = (dataMsg*)(call Packet2.getPayload(msg,sizeof(dataMsg)));
+      //dataMsg newData;
 
       dbg("CarChat","Received infrastructure message, data ID %d (type %d), version number %d, packet %d of %d\n", 
           rxMsg->dataID, rxMsg->dType, rxMsg->vNum, rxMsg->pNum, rxMsg->tPack);
 
 
       atomic {
-      updateData(*rxMsg);
-
+        newData.dataID = rxMsg->dataID;
+        newData.dType = rxMsg->dType;
+        newData.vNum = rxMsg->vNum; 
+        newData.pNum = rxMsg->pNum;
+        newData.sourceAddr = rxMsg->sourceAddr;
+        newData.tPack = rxMsg->tPack;
+        updateData(); //newData);
+      } 
+   
+      atomic {
+/*
       // save information on infrastructure data received
       #ifdef LOGGER_ON
           
-      log_line.sourceType = 0;
-      log_line.no_pings = 0;
-      log_line.sourceAddr = rxMsg->sourceAddr;
-      log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
-      log_line.vNum = rxMsg-> vNum;
-      log_line.pNum = rxMsg-> pNum;
+        log_line.sourceType = 0;
+        log_line.no_pings = mem_data.incomData.pNum;
+        log_line.sourceAddr = rxMsg->sourceAddr;
+        log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
+        log_line.vNum = rxMsg-> vNum;
+        log_line.pNum = rxMsg-> pNum;
 
-      AddToLog(log_line);
+        post AddToLog();
 
       #endif
+*/
       }
       
       atomic {
