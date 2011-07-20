@@ -39,6 +39,8 @@ implementation {
 
   components new TimerMilliC() as DataBackOffTimer; // timer to end communication in DEADZ_A if it times out
 
+  components HilTimerMilliC;
+  CarChatC.LocalTime -> HilTimerMilliC;
 
   components  RandomLfsrC;
 

@@ -54,6 +54,8 @@ module CarChatC {
     interface Timer<TMilli> as PingSupprTimer;
 #endif
 
+    interface LocalTime<TMilli>;
+
     // for RSSI read
 #ifdef SIM_MODE
     interface TossimPacket;
@@ -113,6 +115,8 @@ implementation {
   nx_uint16_t no_adv;
   nx_uint16_t no_data;
   nx_uint16_t no_req;
+
+  nx_uint32_t startTime;
 
 // ********** FUNCTIONS USED BY CARCHAT **********
 
@@ -289,7 +293,7 @@ implementation {
        infr_data.totalPack = 10;
        infr_data.complData.dataID = 0xDA;
        infr_data.complData.dType = 0x2A;
-       infr_data.complData.vNum = 1;
+       infr_data.complData.vNum = (uint8_t)(TOS_NODE_ID - MAX_NODES);
        infr_data.complData.sourceAddr = (uint16_t)TOS_NODE_ID;
        infr_data.complData.destAddr = 0xFFFF;	// broadcast address
        infr_data.complData.pNum = 0;       // this will get incremented after each transmission, cycle on values 0..9
@@ -309,6 +313,11 @@ implementation {
     log_buf.vNum[log_idx] = log_line.vNum;
     log_buf.pNum[log_idx] = log_line.pNum;
 
+    log_buf.time[log_idx] = log_line.time;
+    log_buf.curr_vNum[log_idx] = log_line.curr_vNum;
+    log_buf.curr_pNum[log_idx] = log_line.curr_pNum;
+    log_buf.no_packs[log_idx] = log_line.no_packs;
+
     log_idx = log_idx + 1;
 
     if(log_idx == LOG_MAX && mote_busy == FALSE) {
@@ -327,14 +336,19 @@ implementation {
 
         //#ifdef LOGGER_ON
           
-        log_line.no_pings =  mem_data.incomData.pNum;
-        log_line.sourceAddr = newData.sourceAddr;
-        log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
-        log_line.vNum = newData.vNum;
-        log_line.pNum = newData.pNum;
-        log_line.sourceType = 8;
+        //log_line.no_pings =  0;
+        //log_line.sourceAddr = newData.sourceAddr;
+        //log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
+        //log_line.vNum = newData.vNum;
+        //log_line.pNum = newData.pNum;
+        //log_line.sourceType = 8;
 
-        post AddToLog();
+        //log_line.time = (uint32_t)((call LocalTime.get() - startTime)/1024);;
+        //log_line.curr_vNum = mem_data.incomData.vNum;
+        //log_line.curr_pNum = mem_data.incomData.pNum;
+        //log_line.no_packs = no_adv + no_req + no_data;
+
+        //post AddToLog();
 
         //#endif
 
@@ -370,20 +384,7 @@ implementation {
         dbg("CarData"," --- Most recent data status is version %d in complete and version %d, packet %d in incomplete ---\n", 
             mem_data.complData.vNum, mem_data.incomData.vNum, mem_data.incomData.pNum);
 
-        //#ifdef LOGGER_ON
-          
-        //log_line.no_pings =  mem_data.incomData.pNum;
-        //log_line.sourceAddr = newData.sourceAddr;
-        //log_line.sig_val = ((newData.dataID) << 8) + (newData.dType);	
-        //log_line.vNum = newData.vNum;
-        //log_line.pNum = newData.pNum;
-        //log_line.sourceType = 8;
-
-        //post AddToLog();
-
-        //#endif
-
-
+ 
         if(mem_data.complData.vNum > 0 && mem_data.incomData.pNum == mem_data.totalPack) {
           // output for file concerned with completion of data updates
           dbg("CarData","COMPLETED RECEPTION of VERSION %d\n",mem_data.complData.vNum);
@@ -472,7 +473,11 @@ implementation {
 
     #ifdef SIM_MODE
       call HeartBeatTimer.startPeriodic(SIM_UNIT); // for simulation, need event every SIM_UNIT seconds to update position
+    #else
+      startTime = call LocalTime.get();
     #endif
+
+    
 
     // upon booting, first start radio 
     call AMControl.start();
@@ -678,6 +683,12 @@ event void PingRecTimer.fired() {
           log_line.pNum = 0;
           log_line.sourceType = 1;
 
+          log_line.time = (uint32_t)((call LocalTime.get() - startTime)/1024);;
+          log_line.curr_vNum = mem_data.incomData.vNum;
+          log_line.curr_pNum = mem_data.incomData.pNum;
+          log_line.no_packs = no_adv + no_req + no_data;
+
+
 	  post AddToLog();
 
           #endif
@@ -766,12 +777,18 @@ event void PingRecTimer.fired() {
 
           #ifdef LOGGER_ON
           
-          log_line.no_pings =  mem_data.incomData.pNum;
+          log_line.no_pings =  0;
           log_line.sourceAddr = rxMsg->sourceAddr;
           log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
           log_line.vNum = rxMsg-> vNum;
           log_line.pNum = 0;
           log_line.sourceType = 2;
+
+          log_line.time = (uint32_t)((call LocalTime.get() - startTime)/1024);;
+          log_line.curr_vNum = mem_data.incomData.vNum;
+          log_line.curr_pNum = mem_data.incomData.pNum;
+          log_line.no_packs = no_adv + no_req + no_data;
+
 
           post AddToLog();
 
@@ -790,12 +807,17 @@ event void PingRecTimer.fired() {
 
             #ifdef LOGGER_ON
           
-            log_line.no_pings =  mem_data.incomData.pNum;
+            log_line.no_pings =  0;
             log_line.sourceAddr = rxMsg->sourceAddr;
             log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
             log_line.vNum = rxMsg-> vNum;
             log_line.pNum = 0;
             log_line.sourceType = 2;
+
+            log_line.time = (uint32_t)((call LocalTime.get() - startTime)/1024);;
+            log_line.curr_vNum = mem_data.incomData.vNum;
+            log_line.curr_pNum = mem_data.incomData.pNum;
+            log_line.no_packs = no_adv + no_req + no_data;
 
             post AddToLog();
 
@@ -848,12 +870,17 @@ event void PingRecTimer.fired() {
  
         #ifdef LOGGER_ON
           
-        log_line.no_pings =  mem_data.incomData.pNum;
+        log_line.no_pings =  0;
         log_line.sourceAddr = rxMsg->sourceAddr;
         log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
         log_line.vNum = rxMsg-> vNum;
         log_line.pNum = rxMsg-> pNum;
         log_line.sourceType = 3;
+
+        log_line.time = (uint32_t)((call LocalTime.get() - startTime)/1024);;
+        log_line.curr_vNum = mem_data.incomData.vNum;
+        log_line.curr_pNum = mem_data.incomData.pNum;
+        log_line.no_packs = no_adv + no_req + no_data;
 
         post AddToLog();
 
@@ -906,7 +933,7 @@ event void PingRecTimer.fired() {
     // if NULL request was sent and node is NOT initiator, follow up with own advertisement
     reqMsg* sentMsg = (reqMsg*)(call Packet4.getPayload(msg,sizeof(reqMsg)));
 
-    if(sentMsg->dataID == 0) { // null request was sent 
+    if(sentMsg->dataID == 0) { // null request was sent, think about going back to DEADZ_Q
       dbg("CarChat","Null request was sent...\n");
       if(curr_comm.amInit == 0) { // non-initiator, then send own advertisement
         advMsg* pAdvMsg = (advMsg*)(call Packet3.getPayload(&AdvPkt,sizeof(advMsg))); 
@@ -921,18 +948,18 @@ event void PingRecTimer.fired() {
         if(call SendAdvMsg.send(AM_BROADCAST_ADDR,&AdvPkt,sizeof(advMsg)) == FAIL) { 
           dbg("CarErr","Failed sending adv message \n");
           ChangeState(DEADZ_Q);
-        }
+        } 
         else {
           dbg("CarChat","Sending own adv, pending in DEADZ_A while waiting for requests\n");
           no_adv++;
           call CommTOTimer.startOneShot(3*PING_PER);
-        }
+        } // end if(call SendAdvMsg. ...
       }
       else { // initiator, can go back to DEADZ_Q
          dbg("CarChat","... going back to DEADZ_Q\n");
          ChangeState(DEADZ_Q);
-      }
-    }
+      } // end if(curr_comm.amInit == 0
+    } // end if(sentMsg-> ...
   }
 
   event message_t* ReceiveData.receive(message_t* msg, void* payload, uint8_t len) {
@@ -943,12 +970,17 @@ event void PingRecTimer.fired() {
 
       #ifdef LOGGER_ON
       
-      log_line.no_pings = mem_data.incomData.pNum;
+      log_line.no_pings = 0;
       log_line.sourceAddr = rxMsg->sourceAddr;
       log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
       log_line.vNum = rxMsg-> vNum;
       log_line.pNum = rxMsg-> pNum;
       log_line.sourceType = 4;
+
+      log_line.time = (uint32_t)((call LocalTime.get() - startTime)/1024);;
+      log_line.curr_vNum = mem_data.incomData.vNum;
+      log_line.curr_pNum = mem_data.incomData.pNum;
+      log_line.no_packs = no_adv + no_req + no_data;
 
       post AddToLog();
 
@@ -1015,21 +1047,27 @@ event void PingRecTimer.fired() {
       } 
    
       atomic {
-/*
+
       // save information on infrastructure data received
       #ifdef LOGGER_ON
           
         log_line.sourceType = 0;
-        log_line.no_pings = mem_data.incomData.pNum;
+        log_line.no_pings = 0;
         log_line.sourceAddr = rxMsg->sourceAddr;
         log_line.sig_val = ((rxMsg->dataID) << 8) + (rxMsg->dType);	
         log_line.vNum = rxMsg-> vNum;
         log_line.pNum = rxMsg-> pNum;
 
+        log_line.time = (uint32_t)((call LocalTime.get() - startTime)/1024);
+        log_line.curr_vNum = mem_data.incomData.vNum;
+        log_line.curr_pNum = mem_data.incomData.pNum;
+        log_line.no_packs = no_adv + no_req + no_data;
+
+
         post AddToLog();
 
       #endif
-*/
+
       }
       
       atomic {
