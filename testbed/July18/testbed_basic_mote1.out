@@ -1,0 +1,70 @@
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 0
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 1
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 2
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 3
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 4
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 5
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 6
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 7
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 8
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 9
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 0
+NEW Data status update:  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 1
+Ping message 0 from 2 with ping value -24 vNum: 0 and pNum: 0
+Ping message 1 from 2 with ping value -37 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 0
+Ping message 2 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 3 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 1
+Ping message 5 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 6 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 7 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 2
+Ping message 8 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 9 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 3
+Ping message 11 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 12 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 13 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 4
+Ping message 14 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 15 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 16 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 5
+Ping message 17 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 18 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 6
+Ping message 20 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 21 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 22 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 7
+Ping message 23 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 24 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 25 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 8
+Ping message 26 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 27 from 2 with ping value -31 vNum: 0 and pNum: 0
+Ping message 28 from 2 with ping value -31 vNum: 0 and pNum: 0
+Request message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 9
+Ping message 29 from 2 with ping value -26 vNum: 0 and pNum: 0
+Ping message 30 from 2 with ping value -25 vNum: 0 and pNum: 0
+Request message  from 2 with data ID 00 and data type 2A vNum: 1 and pNum: 9
+Advertisement message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 0
+Ping message 32 from 2 with ping value -25 vNum: 0 and pNum: 0
+Ping message 33 from 2 with ping value -25 vNum: 0 and pNum: 0
+Ping message 34 from 2 with ping value -25 vNum: 0 and pNum: 0
+Request message  from 2 with data ID 00 and data type 2A vNum: 1 and pNum: 9
+Advertisement message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 0
+Ping message 35 from 2 with ping value -25 vNum: 0 and pNum: 0
+Ping message 36 from 2 with ping value -25 vNum: 0 and pNum: 0
+Ping message 37 from 2 with ping value -25 vNum: 0 and pNum: 0
+Request message  from 2 with data ID 00 and data type 2A vNum: 1 and pNum: 9
+Advertisement message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 0
+Ping message 38 from 2 with ping value -25 vNum: 0 and pNum: 0
+Ping message 39 from 2 with ping value -25 vNum: 0 and pNum: 0
+Ping message 40 from 2 with ping value -25 vNum: 0 and pNum: 0
+Request message  from 2 with data ID 00 and data type 2A vNum: 1 and pNum: 9
+Advertisement message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 0
+Ping message 41 from 2 with ping value -28 vNum: 0 and pNum: 0
+Ping message 42 from 2 with ping value -36 vNum: 0 and pNum: 0
+Ping message 43 from 2 with ping value -39 vNum: 0 and pNum: 0

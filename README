@@ -1,0 +1,34 @@
+README for CarChat
+Author/Contact: ninabaker@purdue.edu
+
+Description:
+
+CarChat is a data dissemination protocol designed for a highly mobile network such as 
+a vehicular wireless ad-hoc network. There are two types of nodes: vehicular nodes and 
+infrastructure nodes (with ID greater than MAX_NODES)
+
+$ make micaz sim     or     $ make telosb     
+(ensure proper #define statements are commented in CarChat.h file)
+
+This will compile the protocol for simulation or testbed deployment respectively.
+in order to run a simulation, use scripts in ./test_scripts/ with corresponding input
+files from ./input_files/ Then, use scripts in ./input_proc/ to parse the output of
+the simulation file into usable statistics:
+
+input_filter_*.py - This script will parse the simulation output file and print out
+              a series of arrays with received data packet count for each of the nodes 
+              in the network, with the first entry of each array being a timestamp.
+
+msgCount_filter_* - This script will parse the simulation output file and print out
+              a series of arrays with total counts for sent messages (advertisements,
+              requests and data packets) by each node. First entry of the array will
+              be a time stamp.
+
+compl_filter_* - This script will parse the outputs of the previous two scripts and
+              output a series of arrays as follows
+              time_stamp | data packets held by node 1 | ... | data packets held by node N | total data traffic so far in network
+
+
+
+Known bugs/limitations:
+

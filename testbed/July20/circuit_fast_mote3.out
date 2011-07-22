@@ -1,0 +1,220 @@
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 0
+    --- Current time: 4, have sent 0 packets and have ver 1, packets up to 1
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 1
+    --- Current time: 5, have sent 0 packets and have ver 1, packets up to 2
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 2
+    --- Current time: 6, have sent 0 packets and have ver 1, packets up to 3
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 3
+    --- Current time: 7, have sent 0 packets and have ver 1, packets up to 4
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 4
+    --- Current time: 8, have sent 0 packets and have ver 1, packets up to 5
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 5
+    --- Current time: 9, have sent 0 packets and have ver 1, packets up to 6
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 6
+    --- Current time: 10, have sent 0 packets and have ver 1, packets up to 7
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 7
+    --- Current time: 11, have sent 0 packets and have ver 1, packets up to 8
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 8
+    --- Current time: 12, have sent 0 packets and have ver 1, packets up to 9
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 9
+    --- Current time: 13, have sent 0 packets and have ver 1, packets up to 10
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 0
+    --- Current time: 14, have sent 0 packets and have ver 1, packets up to 10
+Infrastructure message  from 301 with data ID DA and data type 2A vNum: 1 and pNum: 1
+    --- Current time: 15, have sent 0 packets and have ver 1, packets up to 10
+Ping message 22 from 4 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 55, have sent 0 packets and have ver 1, packets up to 10
+Ping message 26 from 4 with ping value -47 vNum: 0 and pNum: 0
+    --- Current time: 67, have sent 0 packets and have ver 1, packets up to 10
+Ping message 27 from 4 with ping value -45 vNum: 0 and pNum: 0
+    --- Current time: 68, have sent 0 packets and have ver 1, packets up to 10
+Advertisement message  from 4 with data ID DA and data type 2A vNum: 0 and pNum: 0
+    --- Current time: 69, have sent 0 packets and have ver 1, packets up to 10
+Request message  from 4 with data ID DA and data type 2A vNum: 1 and pNum: 5
+    --- Current time: 69, have sent 0 packets and have ver 1, packets up to 10
+Ping message 28 from 4 with ping value -34 vNum: 0 and pNum: 0
+    --- Current time: 73, have sent 0 packets and have ver 1, packets up to 10
+Ping message 29 from 4 with ping value -35 vNum: 0 and pNum: 0
+    --- Current time: 74, have sent 0 packets and have ver 1, packets up to 10
+Request message  from 4 with data ID DA and data type 2A vNum: 1 and pNum: 6
+    --- Current time: 76, have sent 0 packets and have ver 1, packets up to 10
+Ping message 31 from 4 with ping value -46 vNum: 0 and pNum: 0
+    --- Current time: 80, have sent 0 packets and have ver 1, packets up to 10
+Ping message 32 from 4 with ping value -39 vNum: 0 and pNum: 0
+    --- Current time: 81, have sent 0 packets and have ver 1, packets up to 10
+Request message  from 4 with data ID DA and data type 2A vNum: 1 and pNum: 7
+    --- Current time: 82, have sent 0 packets and have ver 1, packets up to 10
+Ping message 34 from 4 with ping value -45 vNum: 0 and pNum: 0
+    --- Current time: 86, have sent 0 packets and have ver 1, packets up to 10
+Ping message 35 from 4 with ping value -44 vNum: 0 and pNum: 0
+    --- Current time: 87, have sent 0 packets and have ver 1, packets up to 10
+Ping message 36 from 4 with ping value -43 vNum: 0 and pNum: 0
+    --- Current time: 88, have sent 0 packets and have ver 1, packets up to 10
+Request message  from 4 with data ID DA and data type 2A vNum: 1 and pNum: 8
+    --- Current time: 89, have sent 0 packets and have ver 1, packets up to 10
+Ping message 37 from 4 with ping value -50 vNum: 0 and pNum: 0
+    --- Current time: 93, have sent 0 packets and have ver 1, packets up to 10
+Ping message 38 from 4 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 94, have sent 0 packets and have ver 1, packets up to 10
+Ping message 101 from 2 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 94, have sent 0 packets and have ver 1, packets up to 10
+Ping message 106 from 2 with ping value -46 vNum: 0 and pNum: 0
+    --- Current time: 98, have sent 0 packets and have ver 1, packets up to 10
+Ping message 108 from 2 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 100, have sent 0 packets and have ver 1, packets up to 10
+Request message  from 2 with data ID 00 and data type 00 vNum: 0 and pNum: 0
+    --- Current time: 101, have sent 0 packets and have ver 1, packets up to 10
+Advertisement message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 0
+    --- Current time: 101, have sent 0 packets and have ver 1, packets up to 10
+Ping message 109 from 2 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 105, have sent 0 packets and have ver 1, packets up to 10
+Ping message 146 from 1 with ping value -50 vNum: 0 and pNum: 0
+    --- Current time: 106, have sent 0 packets and have ver 1, packets up to 10
+Ping message 111 from 2 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 107, have sent 0 packets and have ver 1, packets up to 10
+Request message  from 2 with data ID 00 and data type 00 vNum: 0 and pNum: 0
+    --- Current time: 107, have sent 0 packets and have ver 1, packets up to 10
+Advertisement message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 0
+    --- Current time: 107, have sent 0 packets and have ver 1, packets up to 10
+Ping message 112 from 2 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 108, have sent 0 packets and have ver 1, packets up to 10
+Request message  from 2 with data ID 00 and data type 00 vNum: 0 and pNum: 0
+    --- Current time: 111, have sent 0 packets and have ver 1, packets up to 10
+Advertisement message  from 2 with data ID DA and data type 2A vNum: 1 and pNum: 0
+    --- Current time: 111, have sent 0 packets and have ver 1, packets up to 10
+Ping message 148 from 1 with ping value -45 vNum: 0 and pNum: 0
+    --- Current time: 113, have sent 0 packets and have ver 1, packets up to 10
+Ping message 149 from 1 with ping value -45 vNum: 0 and pNum: 0
+    --- Current time: 114, have sent 0 packets and have ver 1, packets up to 10
+Ping message 60 from 4 with ping value -50 vNum: 0 and pNum: 0
+    --- Current time: 123, have sent 0 packets and have ver 1, packets up to 10
+Ping message 120 from 2 with ping value -47 vNum: 0 and pNum: 0
+    --- Current time: 148, have sent 0 packets and have ver 1, packets up to 10
+Ping message 128 from 2 with ping value -50 vNum: 0 and pNum: 0
+    --- Current time: 156, have sent 0 packets and have ver 1, packets up to 10
+Ping message 94 from 4 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 162, have sent 0 packets and have ver 1, packets up to 10
+Ping message 134 from 2 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 162, have sent 0 packets and have ver 1, packets up to 10
+Ping message 95 from 4 with ping value -47 vNum: 0 and pNum: 0
+    --- Current time: 163, have sent 0 packets and have ver 1, packets up to 10
+Ping message 138 from 2 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 171, have sent 0 packets and have ver 1, packets up to 10
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 0
+    --- Current time: 171, have sent 0 packets and have ver 2, packets up to 1
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 1
+    --- Current time: 172, have sent 0 packets and have ver 2, packets up to 2
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 2
+    --- Current time: 173, have sent 0 packets and have ver 2, packets up to 3
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 3
+    --- Current time: 174, have sent 0 packets and have ver 2, packets up to 4
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 4
+    --- Current time: 175, have sent 0 packets and have ver 2, packets up to 5
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 5
+    --- Current time: 176, have sent 0 packets and have ver 2, packets up to 6
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 6
+    --- Current time: 177, have sent 0 packets and have ver 2, packets up to 7
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 7
+    --- Current time: 178, have sent 0 packets and have ver 2, packets up to 8
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 8
+    --- Current time: 179, have sent 0 packets and have ver 2, packets up to 9
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 9
+    --- Current time: 180, have sent 0 packets and have ver 2, packets up to 10
+Infrastructure message  from 302 with data ID DA and data type 2A vNum: 2 and pNum: 0
+    --- Current time: 181, have sent 0 packets and have ver 2, packets up to 10
+Ping message 116 from 4 with ping value -47 vNum: 0 and pNum: 0
+    --- Current time: 212, have sent 0 packets and have ver 2, packets up to 10
+Ping message 117 from 4 with ping value -40 vNum: 0 and pNum: 0
+    --- Current time: 213, have sent 0 packets and have ver 2, packets up to 10
+Request message  from 4 with data ID DA and data type 2A vNum: 2 and pNum: 6
+    --- Current time: 214, have sent 0 packets and have ver 2, packets up to 10
+Ping message 118 from 4 with ping value -34 vNum: 0 and pNum: 0
+    --- Current time: 218, have sent 0 packets and have ver 2, packets up to 10
+Ping message 119 from 4 with ping value -39 vNum: 0 and pNum: 0
+    --- Current time: 219, have sent 0 packets and have ver 2, packets up to 10
+Ping message 120 from 4 with ping value -39 vNum: 0 and pNum: 0
+    --- Current time: 220, have sent 0 packets and have ver 2, packets up to 10
+Request message  from 4 with data ID DA and data type 2A vNum: 2 and pNum: 7
+    --- Current time: 221, have sent 0 packets and have ver 2, packets up to 10
+Ping message 121 from 4 with ping value -46 vNum: 0 and pNum: 0
+    --- Current time: 225, have sent 0 packets and have ver 2, packets up to 10
+Ping message 122 from 4 with ping value -46 vNum: 0 and pNum: 0
+    --- Current time: 226, have sent 0 packets and have ver 2, packets up to 10
+Ping message 128 from 4 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 240, have sent 0 packets and have ver 2, packets up to 10
+Ping message 129 from 4 with ping value -46 vNum: 0 and pNum: 0
+    --- Current time: 241, have sent 0 packets and have ver 2, packets up to 10
+Request message  from 4 with data ID DA and data type 2A vNum: 2 and pNum: 8
+    --- Current time: 242, have sent 0 packets and have ver 2, packets up to 10
+Ping message 131 from 4 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 247, have sent 0 packets and have ver 2, packets up to 10
+Ping message 134 from 4 with ping value -47 vNum: 0 and pNum: 0
+    --- Current time: 254, have sent 0 packets and have ver 2, packets up to 10
+Ping message 136 from 4 with ping value -46 vNum: 0 and pNum: 0
+    --- Current time: 256, have sent 0 packets and have ver 2, packets up to 10
+Ping message 138 from 4 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 263, have sent 0 packets and have ver 2, packets up to 10
+Ping message 140 from 4 with ping value -50 vNum: 0 and pNum: 0
+    --- Current time: 269, have sent 0 packets and have ver 2, packets up to 10
+Ping message 150 from 4 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 283, have sent 0 packets and have ver 2, packets up to 10
+Ping message 153 from 4 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 291, have sent 0 packets and have ver 2, packets up to 10
+Ping message 155 from 4 with ping value -49 vNum: 0 and pNum: 0
+    --- Current time: 297, have sent 0 packets and have ver 2, packets up to 10
+Ping message 183 from 2 with ping value -47 vNum: 0 and pNum: 0
+    --- Current time: 297, have sent 0 packets and have ver 2, packets up to 10
+Ping message 221 from 1 with ping value -50 vNum: 0 and pNum: 0
+    --- Current time: 298, have sent 0 packets and have ver 2, packets up to 10
+Data message  from 2 with data ID DA and data type 2A vNum: 3 and pNum: 1
+    --- Current time: 299, have sent 0 packets and have ver 2, packets up to 10
+Ping message 185 from 2 with ping value -43 vNum: 0 and pNum: 0
+    --- Current time: 303, have sent 0 packets and have ver 3, packets up to 0
+Ping message 186 from 2 with ping value -47 vNum: 0 and pNum: 0
+    --- Current time: 304, have sent 0 packets and have ver 3, packets up to 0
+Ping message 187 from 2 with ping value -46 vNum: 0 and pNum: 0
+    --- Current time: 310, have sent 0 packets and have ver 3, packets up to 0
+Ping message 226 from 1 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 310, have sent 0 packets and have ver 3, packets up to 0
+Ping message 188 from 2 with ping value -47 vNum: 0 and pNum: 0
+    --- Current time: 311, have sent 0 packets and have ver 3, packets up to 0
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 0
+    --- Current time: 312, have sent 0 packets and have ver 3, packets up to 1
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 1
+    --- Current time: 313, have sent 0 packets and have ver 3, packets up to 2
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 2
+    --- Current time: 314, have sent 0 packets and have ver 3, packets up to 3
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 3
+    --- Current time: 315, have sent 0 packets and have ver 3, packets up to 4
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 4
+    --- Current time: 316, have sent 0 packets and have ver 3, packets up to 5
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 5
+    --- Current time: 317, have sent 0 packets and have ver 3, packets up to 6
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 6
+    --- Current time: 318, have sent 0 packets and have ver 3, packets up to 7
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 7
+    --- Current time: 319, have sent 0 packets and have ver 3, packets up to 8
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 8
+    --- Current time: 320, have sent 0 packets and have ver 3, packets up to 9
+Infrastructure message  from 303 with data ID DA and data type 2A vNum: 3 and pNum: 9
+    --- Current time: 321, have sent 0 packets and have ver 3, packets up to 10
+Ping message 192 from 2 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 332, have sent 0 packets and have ver 3, packets up to 10
+Ping message 193 from 2 with ping value -46 vNum: 0 and pNum: 0
+    --- Current time: 333, have sent 0 packets and have ver 3, packets up to 10
+Ping message 180 from 4 with ping value -48 vNum: 0 and pNum: 0
+    --- Current time: 337, have sent 0 packets and have ver 3, packets up to 10
+Ping message 181 from 4 with ping value -42 vNum: 0 and pNum: 0
+    --- Current time: 338, have sent 0 packets and have ver 3, packets up to 10
+Ping message 197 from 2 with ping value -50 vNum: 0 and pNum: 0
+    --- Current time: 339, have sent 0 packets and have ver 3, packets up to 10
+Ping message 182 from 4 with ping value -43 vNum: 0 and pNum: 0
+    --- Current time: 339, have sent 0 packets and have ver 3, packets up to 10
+Request message  from 4 with data ID DA and data type 2A vNum: 3 and pNum: 4
+    --- Current time: 340, have sent 0 packets and have ver 3, packets up to 10
+Ping message 183 from 4 with ping value -39 vNum: 0 and pNum: 0
+    --- Current time: 344, have sent 0 packets and have ver 3, packets up to 10
+Ping message 184 from 4 with ping value -38 vNum: 0 and pNum: 0
+    --- Current time: 345, have sent 0 packets and have ver 3, packets up to 10
+Ping message 185 from 4 with ping value -38 vNum: 0 and pNum: 0
+    --- Current time: 346, have sent 0 packets and have ver 3, packets up to 10

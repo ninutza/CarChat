@@ -2,10 +2,10 @@
 #ifndef CARCHAT_H
 #define CARCHAT_H
 
-#define LOGGER_ON
-//#define SIM_MODE
+#define LOGGER_ON       // uncomment for testbed compilation/installation
+//#define SIM_MODE      // uncomment for simulation mode compilation
 
-//#define PING_SUPPR	// suppress pinging for 10*ping interval if more than 10 pings are heard in any one interval 	
+//#define PING_SUPPR	// suppress pinging for PING_PER interval if more than SUPPR_NO pings are heard in any one interval 	
 
 enum {
   AM_PINGMSG = 167,	// AM type for ping(beacon) messages
@@ -33,7 +33,9 @@ enum {
   MAX_DATA = 1,
   MAX_PING = 5,
   LOG_MAX = 10,
-  SIM_UNIT = 308	// in ms, smallest unit of simulation time update
+  SIM_UNIT = 308,	// in ms, smallest unit of simulation time update (for heartbeat timer)
+
+  SUPPR_NO = 10
 };
 
 // dissemination packet

@@ -606,7 +606,7 @@ event void PingRecTimer.fired() {
 #ifdef PING_SUPPR
   event void PingSupprTimer.fired()
   {
-    if(number_pings >= 10) { // then still too congested, continue to be quiet
+    if(number_pings >= SUPPR_NO) { // then still too congested, continue to be quiet
       call PingSupprTimer.startOneShot(PING_PER);
     }
     else { // network has cleared up some, restart PING timer
@@ -698,7 +698,7 @@ event void PingRecTimer.fired() {
 
           #ifdef PING_SUPPR
         
-          if(number_pings >= 10 && !(call PingSupprTimer.isRunning()))  // if received too many pings and haven't suppressed yet
+          if(number_pings >= SUPPR_NO && !(call PingSupprTimer.isRunning()))  // if received too many pings and haven't suppressed yet
           {
             dbg("CarData"," ***** Too many PINGS, starting quiet period for congestion control *****\n");
             call PingTimer.stop();
