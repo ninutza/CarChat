@@ -7,7 +7,7 @@ CarChat is a data dissemination protocol designed for a highly mobile network su
 a vehicular wireless ad-hoc network. There are two types of nodes: vehicular nodes and 
 infrastructure nodes (with ID greater than MAX_NODES)
 
-$ make micaz sim     or     $ make telosb     
+> make micaz sim     or     > make telosb     
 (ensure proper #define statements are commented in CarChat.h file)
 
 This will compile the protocol for simulation or testbed deployment respectively.
@@ -18,17 +18,146 @@ the simulation file into usable statistics:
 input_filter_*.py - This script will parse the simulation output file and print out
               a series of arrays with received data packet count for each of the nodes 
               in the network, with the first entry of each array being a timestamp.
+	      The output is to the screen, though it should be redirected to another
+              file to save for processing/grphing. (see example run below)
 
 msgCount_filter_* - This script will parse the simulation output file and print out
               a series of arrays with total counts for sent messages (advertisements,
               requests and data packets) by each node. First entry of the array will
-              be a time stamp.
+              be a time stamp. 
+	      The output is to the screen, though it should be redirected to another
+              file to save for processing/grphing. (see example run below)
 
 compl_filter_* - This script will parse the outputs of the previous two scripts and
               output a series of arrays as follows
               time_stamp | data packets held by node 1 | ... | data packets held by node N | total data traffic so far in network
+	      The output is to the screen, though it should be redirected to another
+              file to save for processing/grphing. (see example run below)
 
 
+WORKFLOW SAMPLE
+---------------
 
-Known bugs/limitations:
+I) Trajectory Generation
+ 1. First, decide which scenario the trajectory path is needed for, and select the appropriate
+    script in ./trajectory_generators. In this example, we will use the highway traffic scenario,
+    so we will use t_hwy_multigrid.py.
+
+ 2. Set the simulation parameters in the script to achieve desired vehicle distribution/density/etc
+      - NO_INTERS_X = number of intersections (on a rectangular grid) in the horizontal direction
+      - NO_INTERS_Y = number of intersections in the vertical direction
+      - GRAN = number of units (meters) between each pair of adjecent intersections
+      - STEP = the number of units that a vehicle can move between consecutive time steps
+      - NO_VEH = number of vehicles
+    Note: the scale between simulation and "real-world" setup is 1:10, so 1m in simulation = 10m in the real world
+    Note2: vehicles will only be initialized at intersection points for easier calculation of initial direction
+
+    For the highway example, if we want to simulate a highway stretch that is 5 km long, we will set the
+    parameters as follows:
+      - NO_INTERS_X = 1 (a highway stretch is one-dimensional)
+      - GRAN = 10 (we will establish virtual "blocks" every 100m so that vehicles can get initialized at this distance,
+                   which is the minimum safe following distance at highway speeds)
+      - NO_INTERS_Y = 51 (thus, 50 blocks => 50*10 = 500m in simualtion => 5km in real world scale)
+      - STEP = 2 (for faster simulation, for finer granularity this can be set to 1)
+      - NO_VEH = 100 (for large scale simulation)
+
+ 3. Run the script to obtain output file hwy_rand_traj.txt:
+    >  ./t_hwy_multigrid.py
+    Note: The structure of this output file is as follows:
+    time | x1 | y1 | x2 | y2 | ... | xn | yn (i.e. each line contains a time stamp and an array of (x,y) coordinates of each of the nodes)    
+
+ 4. Copy this output file into more meaningfully named input file that reflects contents, placed in parent folder:
+    > cp hwy_rand_traj.txt ../hwy_5km_lg.txt
+
+ 5. Now, this file can be used to program robot trajectories, or as an input to a simulation script, as appropriate.
+
+II) Simulation run
+ 1. Ensure that the flags in CarChat.h are set appropriately:
+    #define LOGGER_ON    // this MUST be commented out, since no logging to flash can take place in simulation
+    #define SIM_MODE     // this MUST be left uncommented, since there are certain interfaces used specific to simulation in TOSSIM
+    #define PING_SUPPR	 // this can be commented out or left as is, depending on whether or not ping suppression is being tested
+
+ 2. Compile CarChat code for simulation:
+    > make micaz sim
+
+ 3. Select appropriate test script from ./test_scripts. Names are explicit (by type of scenario, size, number
+    of motes - lg = large scale simulation (100)) in this folder, though any of the scripts can be easily modified
+    to read a different input file or run for a different number of nodes. In this example, we will select test_hwy_5km_lg.py
+    
+ 4. Check run parameters to match the input file, then run
+    - SIM_UNIT - this determines the simulated speed of the vehicles (see comments in test files for speed guidelines)
+    - NO_VEH - this needs to be <= the value used in the trajectory generator to avoid out of bounds error
+    - RUN_TIME - this should be equal to the last time stamp in the input file to ensure complete input file is used
+ 
+    Note: the test script should be copied to the parent file before running (should be in the same folder as the one where
+          CarChat was compiled for simulation in step 2
+    > cp ./test_scripts/test_hwy_5km_lg.py .
+    > ./test_hwy_5km_lg.py
+
+ 5. The output will be of the format <input_file_name>.out if the script is unchanges, so now we have a file hwy_5km_lg.out.
+    Run scripts from ./input_proc (described earlier in this file) to obtain usable results from debug statements in output file:
+    > cp ./input_proc/*_filter_hwy_5km_lg.py .
+    > ./input_filter_hwy_5km_lg.py > hwy_compl_5km_lg.txt    // this script will extract message download completion updates 
+                                                             // time | packets at node 1 | packets at node 2 | ... | packets at node n
+    > ./msgCount_filter_hwy_5km_lg.py > hwy_msg_5km_lg.txt   // this will extract sent message counts for each node
+                                                             // time | msg sent by node 1 | msg sent by node 2 | ... | msg sent by node n
+    > ./compl_filter_hwy_5km_lg.py > hwy_xls_5km_lg.txt  // this will parse the previous two files (_compl and _msg) into an excel compatible list
+                               
+ 6. Open final results file (hwy_xls_5km_lg.txt) in excel and use while space as delimiters to read numbers into a spreadsheet
+    Now the completion percentage (or from raw data, total number of packets downloaded in network) and data traffic can be graphed.
+   	
+II) Testbed run
+ 1. Ensure that the flags in CarChat.h are set appropriately:
+    #define LOGGER_ON    // this MUST be left uncommented, since logging to flash is the only means of extracting data
+    #define SIM_MODE     // this MUST be commented out, since there are certain interfaces used specific to simulation in TOSSIM
+    #define PING_SUPPR	 // this can be commented out or left as is, depending on whether or not ping suppression is being tested
+                         // so far, only testing WIHTOUT ping suppression has been done in testbed
+
+ 2. Compile CarChat code for simulation, install on mote which is plugged into computer USB port (we will use ID = 1 in this example):
+    > make telosb install,1
+
+ 3. Mount mote on robot, repeat step 2 and 3 for remaining motes in testbed experiment. 
+    Note: Do not turn on (insert batteries) in the motes until they are all in place and the experiment is ready to begin.
+    
+ 4. Run mobility experiment. At the end of the experiment, it may be useful to feed new data to the motes (e.g. from new
+    infrastructure version that was not in the network up to that point) so that the logs will be padded with these new messages,
+    thus ensuring all previous communication has been logged (since logging is done in sets of 10)
+
+ 5. For each mote, reinsert in USB port (ensure only one mote is plugged in at a time so they do not continue to run CarChat 
+    and alter the experimental log results). Install log reading application to mote:
+    > cd ReadLog
+    > make telosb install
+    Note: After installation, the mote will begin to read the log (blinking blue light), so care must be taken to ensure complete log 
+          is in fact recorded. Best way to do this is to ensure that log is completely read (lights stop blinking) before proceeding to 
+          the next step).
+
+ 6. Run java serial communication program (which comes with TinyOS installation):
+    >  java net.tinyos.tools.Listen -comm serial@/dev/ttyUSB0:telos
+    Note: type > motelist  to determine which port the mote is connected to (may be /dev/ttyUSB1 instead)
+    Note 2: If this program runs successfully, 
+    Note 3: If this type of error comes up:
+            Exception in thread "main" java.lang.NoClassDefFoundError: net/tinyos/tools/Listen
+            Caused by: java.lang.ClassNotFoundException: net.tinyos.tools.Listen
+            ...
+            Could not find the main class: net.tinyos.tools.Listen.  Program will exit.
+  
+            ..check environment variable CLASSPATH (> printenv CLASSPATH) 
+            It should be /opt/tinyos-2.1.1/support/sdk/java/tinyos.jar:.
+            If value is not as noted above, make sure to change it:
+            > export CLASSPATH=/opt/tinyos-2.1.1/support/sdk/java/tinyos.jar:.
+
+7. Press RESET button on mote (it is marked on the PCB, there are two buttons - RESET and USER), 
+   and the log should be read again, with hex values printed on the screen. Either copy complete output
+    to a file or redirect the output of the Listen program directly when invoked above.
+
+8. Use the ./parse_log.py script to interpret the log saved in step 7 (make sure iput file read in 
+   script is the same as the one of interest). This will translate each log line into a verbose interpretation.
+
+9. Press USER button on the mote to erase log (to start with clean slate on next experiment). This is 
+   important, since it would be difficult to interpret the log on the next run if it does not start out
+   clean. The mote should output a blank message to serial when done erasing (FF 00 00 .. 00 FF). Click
+   RESET again after erased to ensure log is empty (no new lines should be printed to screen from Listen).
+   Mote is now ready for a new experiment starting at step III.1.
+           
+
 

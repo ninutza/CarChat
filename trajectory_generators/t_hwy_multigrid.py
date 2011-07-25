@@ -9,7 +9,7 @@ NO_INTERS_Y = 501; # 51 for 5 km, 101 for 10 km, 501 for 50 km
 GRAN = 10; #block size (in m) * 10 (scale)
 STEP = 2; # how far to advance on each time step
 
-NO_VEH = 100;
+NO_VEH = 10;
 
 #DIST_HWY = 10; # following distance between vehicles on highway 
 

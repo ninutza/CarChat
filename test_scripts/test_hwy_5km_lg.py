@@ -7,7 +7,7 @@ import time
 import Network
 import Radio
 
-SIM_UNIT = 0.6;	# update every 0.3 seconds for step size = 1 -> 70 mph
+SIM_UNIT = 0.6;	# update every 0.3 seconds for step size = 1 -> 70 mph (0.6 s for step size 2)
                 # update every 0.9 seconds for step size = 2 -> 50 mph
                 # update every 0.6 seconds for step size = 1 -> 35 mph
 NO_VEH = 100;
